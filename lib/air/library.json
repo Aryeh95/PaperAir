@@ -1,0 +1,9 @@
+{
+  "name": "air",
+  "version": "0.1.0",
+  "description": "Air quality maths and advice for PaperAir: US AQI, EPA PurpleAir correction, AirNow, humidity compensation, history and plain-words advice. Plain C++, testable on a PC.",
+  "license": "MIT",
+  "frameworks": "*",
+  "platforms": "*",
+  "dependencies": [{ "owner": "bblanchon", "name": "ArduinoJson", "version": "^7.4.2" }]
+}

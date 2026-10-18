@@ -1,0 +1,9 @@
+{
+  "name": "ui",
+  "version": "1.0.0",
+  "description": "PaperAir's screens, drawn with M5GFX",
+  "license": "MIT",
+  "dependencies": {
+    "air": "*"
+  }
+}
