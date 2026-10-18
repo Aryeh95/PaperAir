@@ -66,6 +66,13 @@ The addresses don't clash (power chip 0x6E, SEN66 0x6B, SFA40 0x5D), and the bus
 pull-up resistors. The SEN66 has a fan and a CO₂ sensor, so it draws more current than most I2C
 parts. Power it from a 3.3 V supply pin, not a GPIO.
 
+### Desk stand
+
+[`enclosure/`](enclosure) has a 3D-printed base that the PaperDIY stands in, with the SEN66 and
+SFA40 inside it, plus the FPC wiring.
+
+![The stand](enclosure/render.png)
+
 ## Setting it up
 
 1. Install [PlatformIO](https://platformio.org/install) (the VS Code extension or the command line).
