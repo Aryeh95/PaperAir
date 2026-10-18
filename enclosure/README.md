@@ -62,6 +62,8 @@ elsewhere, change `BACKPLATE_SLOT` in `make_stand.py`.
 
 ## Wiring
 
+![Inside the base, the cable route behind the PaperDIY, a section through the cable, and assembled](render_wiring.png)
+
 The cable goes into the **FPC-I2S** connector, the one nearer the buttons. On the PaperDIY's side:
 
 | Pin | Signal | Goes to |
