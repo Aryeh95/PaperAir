@@ -28,8 +28,9 @@ using air::Metric;
 namespace {
 
 M5Canvas canvas(&M5.Display);
-Sen66 sen66(M5.In_I2C);
-Sfa40 sfa40(M5.In_I2C);
+Sen66 sen66(m5::In_I2C);  // not M5.In_I2C: that reference is only set once M5 is constructed,
+                           // which may be after these globals
+Sfa40 sfa40(m5::In_I2C);
 
 air::History history;
 air::Readings latest;
