@@ -66,12 +66,14 @@ The addresses don't clash (power chip 0x6E, SEN66 0x6B, SFA40 0x5D), and the bus
 pull-up resistors. The SEN66 has a fan and a CO₂ sensor, so it draws more current than most I2C
 parts. Power it from a 3.3 V supply pin, not a GPIO.
 
-### Desk stand
+### Enclosures
 
-[`enclosure/`](enclosure) has a 3D-printed base that the PaperDIY stands in, with the SEN66 and
-SFA40 inside it, plus the FPC wiring.
+[`enclosure/`](enclosure) has two 3D-printed designs, each with the SEN66 and SFA40 inside, plus
+the FPC wiring:
+- **A slim frame** for the bare board and panel.
+- **A desk stand** for a PaperDIY in M5Stack's case.
 
-![The stand](enclosure/render.png)
+![The slim frame](enclosure/render_frame.png)
 
 ## Setting it up
 

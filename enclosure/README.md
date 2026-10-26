@@ -1,4 +1,91 @@
-# Desk stand with sensors
+# Enclosures
+
+Two ways to house the PaperDIY with the sensors:
+
+- **[Slim frame](#slim-frame)**: for the bare PaperDIY board and panel, without M5Stack's case. A
+  thin printed frame around the screen, with a foot at the bottom-back for the sensors.
+- **[Desk stand](#desk-stand)**: for a PaperDIY in M5Stack's case. A low base that the PaperDIY
+  stands in.
+
+Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's buttons end up on top.
+
+## Slim frame
+
+![The slim frame: front, back, with the back removed, and a section through the SEN66](render_frame.png)
+
+- **Screen:** the panel sits behind a printed lip with no acrylic. The lip overlaps the glass by
+  1.25 mm and stops 0.3 mm short of the picture.
+- **Board:** sits behind the right-hand end of the glass, as it does when plugged in.
+  - **Buttons:** G4 and G3 come through the top edge under two printed caps.
+  - **Power switch:** also under a cap, on the right end.
+  - **USB-C:** opening on the right end, near the top.
+- **Foot:** at the bottom-back, 28.5 mm deep. It holds:
+  - **SEN66:** behind the left half of the glass, breathing through two grilles in the back.
+  - **SFA40:** behind its own small grille on the right.
+  - **FPC breakout, its capacitor and the battery:** behind the board.
+- **Cable:** the FPC cable runs down inside, along the board's inner edge.
+- **Sizes:** 123.5 wide × 68 tall × 36 deep. The screen part is 9 mm thick.
+
+### Parts
+
+| File | Print | Notes |
+|---|---|---|
+| `stl/frame_fit_test.stl` | **Print this first**, face down as exported | About an hour. See the checks below. |
+| `stl/frame_bezel.stl` | Face down, as exported | No supports |
+| `stl/frame_back.stl` | Flat ring down, as exported | No supports. The grille bridges are about 30 mm long. |
+| `stl/frame_caps.stl` | Flange down, as exported | Three caps: two for the top buttons, and the one with the longer nub for the power switch |
+
+### Fit test
+
+![The fit test as printed: a ring of the bezel's first 2.4 mm, full depth along the top and the right end](render_fit_test.png)
+
+Drop the plugged-together panel and board into it, face down, then check:
+
+1. **Pocket:** the glass drops in without forcing and doesn't rattle. There should be about 0.25 mm all round.
+2. **Lip:** from the front, the lip covers the glass edge on all four sides but none of the
+   picture. Press G3 to flash the screen black and look at the edges.
+3. **Buttons:** put the caps in from the inside. Each should click its switch with a light press,
+   and the screen shouldn't change unless you press. The power cap does the same on the right end.
+4. **USB-C:** a cable plugs in fully.
+
+If anything is off, tell me what you see, or change the measurement constants at the top of
+`make_frame.py`. Each is labelled.
+
+### Hardware
+
+| Qty | Part |
+|---|---|
+| 4 | M2 × 6 screws, thread-forming ("PT") or plain M2 (they cut their own thread in the printed holes) |
+| 4 | 10 mm round rubber feet, 2 mm thick |
+| — | 1.5–2 mm double-sided foam tape: a strip on the back of the board, a pad for the SFA40 and the breakout |
+| 1 | FPC cable, 12-way 0.5 mm, 150 mm, the same as for the stand, plus the breakout and capacitor (see Wiring) |
+
+### Assembly
+
+1. Put the three caps into their openings from the inside.
+2. Lay the panel face down in the bezel, with the board on the right-hand end. Plug the FPC cable
+   into the board's FPC-I2S socket and the battery into its socket.
+3. Put a strip of foam tape on the back of the board, so the back plate presses it gently against
+   the lip.
+4. In the back part:
+   - Press the SEN66 between its ribs, grilles side against the back wall. The ribs grip it.
+   - Stick the SFA40 to the inside of its grille, sensor facing out.
+   - Stick the breakout and the battery behind the board area.
+5. Run the FPC cable down along the board's inner edge to the breakout. Wire the sensors (see Wiring).
+6. Close the back and fit the four screws. Stick the feet into their recesses.
+
+The panel's flex tab folds round the left end of the glass. There's room for it inside the left wall.
+
+### Measured, and worth checking
+
+These come from photos and calipers:
+- the board's button, USB-C and power switch positions
+- how far the button actuators stick out
+- the glass thickness: 1.2 mm is an estimate
+
+The fit test checks all of them. The constants are at the top of `make_frame.py`.
+
+## Desk stand
 
 A low base that the PaperDIY stands in, leaning back 12°, with the SEN66 and the optional SFA40
 inside it.
@@ -23,7 +110,7 @@ inside it.
 
 Sizes: base 132 × 56 × 32 mm; with the PaperDIY in it, 91 mm tall.
 
-## Parts
+### Parts
 
 | File | Print | Notes |
 |---|---|---|
@@ -49,7 +136,7 @@ plate's windows to within about 1.5 mm. With the back off, the FPC-I2S connector
 from the left and 49–59 mm from the top, with its cable leaving towards the left. If yours is
 elsewhere, change `BACKPLATE_SLOT` in `make_stand.py`.
 
-## Hardware
+### Hardware
 
 | Qty | Part |
 |---|---|
@@ -85,7 +172,7 @@ The cable goes into the **FPC-I2S** connector, the one nearer the buttons. On th
 - The bus already has pull-up resistors (it's shared with the PaperDIY's power chip), so the
   sensors need none.
 
-## Changing it
+### Changing the stand
 
 Everything is set by the constants at the top of `make_stand.py`:
 - the SEN66 and SFA40 sizes
