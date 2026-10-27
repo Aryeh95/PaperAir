@@ -44,12 +44,12 @@ STACK = 4.7                          # glass plus board, front of glass to back 
 GLASS_T = 1.2                        # glass alone (estimate)
 BOARD_X0 = GLASS_W - 46.6            # the board covers the right-hand end of the glass
 # Board edge features, in this orientation (buttons on top)
-KEYS_X = (GLASS_W - 41.6, GLASS_W - 29.7)   # G4, G3 centres along the top edge
+KEYS_X = (GLASS_W - 39.0, GLASS_W - 27.6)   # G4, G3 centres along the top edge (measured on the fit test)
 KEY_TIP_Y = -1.0                     # how far the button actuators reach above the glass edge
 KEY_Z = 3.3                          # their centre, measured from the front face
-USB_Y, USB_Z = 6.5, 4.95             # USB-C centre on the right end
+USB_Y, USB_Z = 6.0, 4.95             # USB-C centre on the right end (measured on the fit test)
 USB_TIP_X = GLASS_W + 4.6            # front of the USB-C socket
-PWR_Y = 54.5                         # power switch centre on the right end
+PWR_Y = 53.0                         # power switch centre on the right end (measured on the fit test)
 PWR_TIP_X = GLASS_W + 4.2
 FPC_EXIT = (BOARD_X0, 7.0, 16.0)     # FPC-I2S cable leaves from under the board's inner edge, Y range
 FLEX_Y = (9.0, 16.0)                 # the panel's own flex strip runs along its back, tab to board
