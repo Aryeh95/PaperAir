@@ -26,7 +26,7 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
   - **SFA40:** behind its own small grille on the right.
   - **FPC breakout, its capacitor and the battery:** behind the board.
 - **Cable:** the FPC cable runs down inside, along the board's inner edge.
-- **Sizes:** 123 wide × 68 tall × 36 deep. The screen part is 9 mm thick.
+- **Sizes:** 125 wide × 68 tall × 36 deep. The screen part is 9 mm thick.
 
 ### Parts
 
@@ -48,8 +48,8 @@ Drop the plugged-together panel and board into it, face down, then check:
    doesn't rattle. Near the right end, the board has a small nub on each long edge. Each nub sits in
    its own recess, and the board's end touches the right-hand wall.
 2. **Lip:** from the front, the lip covers the glass edge on all four sides but none of the
-   picture. Press G3 to flash the screen black and look at the edges. The picture is 1.5 mm from
-   the glass's left end and 4 mm from its right end, so the lip is wider on the right.
+   picture. Press G3 to flash the screen black and look at the edges. The picture is 4 mm from
+   the glass's flex end and 1.5 mm from its board end, so the lip is wider on the left.
 3. **Buttons:** put the caps in from the inside. Each should click its switch with a light press,
    and the screen shouldn't change unless you press. The power cap does the same on the right end.
 4. **USB-C:** a cable plugs in fully.
@@ -83,10 +83,11 @@ If anything is off, tell me what you see, or change the measurement constants at
 6. Run the FPC cable down along the board's inner edge to the breakout. Wire the sensors (see Wiring).
 7. Close the back and fit the four screws. Stick the feet into their recesses.
 
-The panel's flex tab folds round the left end of the glass. There's room for it inside the left wall,
-between two small stops at the corners. Those stops, and two at the right-hand corners, hold the
-glass in place along its length. The board is a separate part, joined to the panel only by the flex,
-and rests with its end against the right-hand wall.
+The stiff part of the panel's flex reaches about 5 mm past the glass's left end. It lies flat between
+the two stops at the left-hand corners, with room before the wall, and the flex loops up from it and
+over the back of the panel to the board. The stops, and two at the right-hand corners, hold the glass
+in place along its length. The board is a separate part, joined to the panel only by the flex, and
+rests with its end against the right-hand wall.
 
 ### Measured, and worth checking
 
@@ -94,15 +95,16 @@ Most of the numbers come from M5Stack's dimension drawings of the panel, the boa
 and from the case model in
 [M5_Hardware](https://github.com/m5stack/M5_Hardware/tree/master/Products/K159-B_PaperDIY_Complete_Kit),
 checked against fit-test prints:
-- the picture's position on the glass, and the window in the stock case
 - the board's end, 4.46 mm past the glass, and its button, USB-C and power switch positions,
   measured from that end
 - the two nubs on the board's long edges. They make it 64.2 mm across, against 62 mm for the glass
   (`NUBS_X`, `NUB_OUT`).
 - the panel thickness, 1.2 mm. The backing plate's grooves are set from it (`GLASS_T`).
 
-From calipers and photos:
+From calipers and the fit tests:
 - the glass, 110.5 × 62 mm (the drawing says 62.5; if yours is, `GLASS_H` in `make_frame.py`)
+- the picture's position on the glass: 4 mm from the flex end, 1.5 mm from the board end
+  (`ACTIVE_X`). This is the one to check first if the lip covers the picture or shows the border.
 - the board's inner edge, and how far the button actuators stick out
 
 The fit test checks all of them. The constants are at the top of `make_frame.py`.

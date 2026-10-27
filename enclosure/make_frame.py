@@ -39,8 +39,9 @@ SEG = 48
 # --- Panel and board. From M5Stack's dimension drawings and case model (K159-B in M5_Hardware),
 # checked against the fit tests; see enclosure/README.md ---
 GLASS_W, GLASS_H = 110.5, 62.0       # ED047TC1 glass, without the flex stub at its left end (calipers; drawing 110.54 x 62.5)
+STUB = 4.8                           # the stiff part of the flex, past the glass's left end (drawing: 4.76 x 34.5)
 ACTIVE_W, ACTIVE_H = 105.02, 59.72   # the picture
-ACTIVE_X = 1.49                      # from the glass's left end: the wide border (4.0) is at the board end
+ACTIVE_X = 4.03                      # from the glass's left end: the wide border is at the flex end (fit tests v1, v5, v8)
 ACTIVE_Y = (GLASS_H - ACTIVE_H) / 2  # centred across
 STACK = 4.7                          # glass plus board, front of glass to back of board (calipers)
 GLASS_T = 1.2
@@ -66,7 +67,7 @@ FLEX_Y = (9.0, 16.0)                 # the panel's own flex strip runs along its
 # --- Backing plate: the panel is flexible, so a flat plate behind it (left of the board) keeps it
 # flat against the lip. Its top and bottom edges clip into grooves in the bezel. ---
 BACKER_T = 1.2
-BACKER_X = (0.5, BOARD_X0 - 1.5)     # stops short of the board's connectors
+BACKER_X = (4.0, BOARD_X0 - 1.5)     # clear of the flex stub's bond on the glass, and of the board's connectors
 GROOVE = 0.6
 
 # --- Frame ---
@@ -74,7 +75,7 @@ LIP = 1.0                            # thickness of the printed lip in front of 
 CLEAR = 0.25                         # around the glass in its pocket
 WINDOW_MARGIN = 0.15                 # window opening beyond the picture on each side, at the back of the lip
 CHAMFER = 0.5                        # the lip's front edge, so the window doesn't shadow the picture
-X0, X1 = -5.0, BOARD_END + 3.2       # outer: room for the folded flex tab on the left, USB-C on the right
+X0, X1 = -STUB - 0.6 - 1.6, BOARD_END + 3.2   # outer: the flex stub lies flat past the glass on the left, USB-C on the right
 STOP = 4.0                           # stops at the glass's corners hold it in place along X; the flex
                                      # tab and its fold are between the stops at the left end
 Y0, Y1 = -4.0, GLASS_H + 4.0
