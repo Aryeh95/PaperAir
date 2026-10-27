@@ -271,6 +271,9 @@ def build_back():
     inner = Manifold.batch_hull([inner_lower, inner_upper])
     inner = local(world(inner) ^ box(-1000, 1000, -1000, 1000, FLOOR, 1000))
     back -= inner
+    # Keep a plate behind the whole board, so its foam tape has something to press against where the
+    # foot cavity would otherwise be open behind its lower half
+    back += foot_outer() ^ box(BOARD_X0 - 1.0, X1, 20.0, Y1 + 30, ZS, ZS + WALL)
     # Screw holes, counterbored for the heads
     for x, y in SCREWS:
         back -= zcyl(x, y, ZS - 1, T_THIN + 1, SCREW_CLEAR / 2)

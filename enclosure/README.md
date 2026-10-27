@@ -64,7 +64,7 @@ If anything is off, tell me what you see, or change the measurement constants at
 |---|---|
 | 4 | M2 × 6 screws, thread-forming ("PT") or plain M2 (they cut their own thread in the printed holes) |
 | 4 | 10 mm round rubber feet, 2 mm thick |
-| — | 1 mm double-sided foam tape: a strip on the back of the board, a pad for the SFA40 board and the breakout |
+| — | Double-sided foam tape: 2 mm for a strip down the back of the board (it compresses to 1.7), 1 mm for the SFA40 board and the breakout |
 | 1 | FPC cable, 12-way 0.5 mm, 150 mm, the same as for the stand, plus the breakout and capacitor (see Wiring) |
 
 ### Assembly
@@ -75,8 +75,9 @@ If anything is off, tell me what you see, or change the measurement constants at
 3. Clip the backing plate in behind the panel, left of the board, bevelled side first. Seat one
    long edge in its groove, bow the plate slightly, and press the other edge down until it clicks
    in. Its shallow channel goes over the panel's flex strip.
-4. Put a strip of foam tape on the back of the board, so the back plate presses it gently against
-   the lip.
+4. Put a strip of 2 mm foam tape down the back of the board, clear of its connectors. The back plate
+   compresses it to 1.7 mm, which holds the board against the glass. Push the board's end against the
+   right-hand wall before closing up: that's what lines its buttons up with their caps.
 5. In the back part:
    - Press the SEN66 between its ribs, grilles side against the back wall. The ribs grip it.
    - Stick the SFA40's carrier board to the inside of its grille, sensor can facing out and its four
