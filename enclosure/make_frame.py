@@ -41,7 +41,7 @@ GLASS_W, GLASS_H = 110.5, 62.0       # ED047TC1 glass, without its flex tab
 ACTIVE_W, ACTIVE_H = 105.6, 59.4     # the picture: 960 x 540 at 0.11 mm
 ACTIVE_X, ACTIVE_Y = 3.6, 1.3        # its top left corner on the glass (the wide border is at the tab end)
 STACK = 4.7                          # glass plus board, front of glass to back of board
-GLASS_T = 1.2                        # glass alone (estimate)
+GLASS_T = 1.2                        # glass alone (M5Stack's drawing)
 BOARD_X0 = GLASS_W - 46.6            # the board covers the right-hand end of the glass
 # Board edge features, in this orientation (buttons on top)
 KEYS_X = (GLASS_W - 39.0, GLASS_W - 27.6)   # G4, G3 centres along the top edge (measured on the fit test)
@@ -51,6 +51,8 @@ USB_Y, USB_Z = 6.0, 4.95             # USB-C centre on the right end (measured o
 USB_TIP_X = GLASS_W + 4.6            # front of the USB-C socket
 PWR_Y = 53.0                         # power switch centre on the right end (measured on the fit test)
 PWR_TIP_X = GLASS_W + 4.2
+NUBS_X = (GLASS_W - 3.6, GLASS_W - 0.6)   # two nubs, one on each long edge, near the right end (M5Stack's drawing)
+NUB_OUT = 1.1                        # how far they reach beyond the glass: 64.2 mm across both
 FPC_EXIT = (BOARD_X0, 7.0, 16.0)     # FPC-I2S cable leaves from under the board's inner edge, Y range
 FLEX_Y = (9.0, 16.0)                 # the panel's own flex strip runs along its back, tab to board
 
@@ -174,6 +176,7 @@ def build_bezel():
     cols = [zcyl(x, y, LIP, ZS, COLUMN_R) for x, y in SCREWS]
     bez += union(cols)
     bez -= box(-CLEAR, GLASS_W + CLEAR, -CLEAR, GLASS_H + CLEAR, LIP, ZS + 1)   # keep the pocket clear
+    bez -= box(NUBS_X[0] - 1.0, NUBS_X[1] + 1.0, -NUB_OUT - 0.4, GLASS_H + NUB_OUT + 0.4, LIP, ZS + 1)
     bez -= union([zcyl(x, y, ZS - 5.5, ZS + 1, SCREW_PILOT / 2) for x, y in SCREWS])
     # Grooves for the backing plate's edges
     zb0 = LIP + GLASS_T

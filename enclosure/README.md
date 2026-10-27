@@ -43,6 +43,7 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 Drop the plugged-together panel and board into it, face down, then check:
 
 1. **Pocket:** the glass drops in without forcing and doesn't rattle. There should be about 0.25 mm all round.
+   Near the right end, the board has a small nub on each long edge. Each nub sits in its own recess.
 2. **Lip:** from the front, the lip covers the glass edge on all four sides but none of the
    picture. Press G3 to flash the screen black and look at the edges.
 3. **Buttons:** put the caps in from the inside. Each should click its switch with a light press,
@@ -81,11 +82,12 @@ The panel's flex tab folds round the left end of the glass. There's room for it 
 
 ### Measured, and worth checking
 
-These come from photos and calipers:
+These come from photos, calipers and M5Stack's dimension drawing:
 - the board's button, USB-C and power switch positions
 - how far the button actuators stick out
-- the panel thickness: 1.2 mm is an estimate. Measure it on the plain part, away from the board.
-  The backing plate's grooves are set from it (`GLASS_T`).
+- the two nubs on the board's long edges. They make it 64.2 mm across there, against 62 mm for
+  the glass (`NUBS_X`, `NUB_OUT`).
+- the panel thickness, 1.2 mm. The backing plate's grooves are set from it (`GLASS_T`).
 
 The fit test checks all of them. The constants are at the top of `make_frame.py`.
 
