@@ -47,9 +47,9 @@ BOARD_X0 = GLASS_W - 46.6            # the board covers the right-hand end of th
 KEYS_X = (GLASS_W - 39.0, GLASS_W - 27.6)   # G4, G3 centres along the top edge (measured on the fit test)
 KEY_TIP_Y = -1.0                     # how far the button actuators reach above the glass edge
 KEY_Z = 3.3                          # their centre, measured from the front face
-USB_Y, USB_Z = 6.0, 4.95             # USB-C centre on the right end (measured on the fit test)
+USB_Y, USB_Z = 6.8, 3.6              # USB-C centre on the right end (fit test, and M5Stack's drawing for Z)
 USB_TIP_X = GLASS_W + 4.6            # front of the USB-C socket
-PWR_Y = 53.0                         # power switch centre on the right end (measured on the fit test)
+PWR_Y = 53.9                         # power switch centre on the right end (measured on the fit test)
 PWR_TIP_X = GLASS_W + 4.2
 NUBS_X = (GLASS_W - 3.6, GLASS_W - 0.6)   # two nubs, one on each long edge, near the right end (M5Stack's drawing)
 NUB_OUT = 1.1                        # how far they reach beyond the glass: 64.2 mm across both
@@ -190,8 +190,9 @@ def build_bezel():
 
 
 def usb_cut():
-    usb = box(X1 - 3.0, X1 + 1, USB_Y - 4.6, USB_Y + 4.6, USB_Z - 3.5, USB_Z + 3.5)
-    plug = box(X1 - 1.2, X1 + 1, USB_Y - 6.3, USB_Y + 6.3, USB_Z - 4.3, USB_Z + 4.3)   # room for the plug's moulding
+    front = 0.6   # keep a strip of wall along the front face
+    usb = box(X1 - 3.0, X1 + 1, USB_Y - 4.8, USB_Y + 4.8, max(USB_Z - 3.5, front), ZS + 1.0)   # open at the back, so the board drops in
+    plug = box(X1 - 1.2, X1 + 1, USB_Y - 6.3, USB_Y + 6.3, max(USB_Z - 4.3, front), USB_Z + 4.3)   # room for the plug's moulding
     return usb + plug
 
 
