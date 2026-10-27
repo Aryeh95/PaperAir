@@ -7,7 +7,7 @@ Parts (all print without supports):
   frame_bezel.stl     front face down. The printed lip holds the glass; the board's buttons,
                       USB-C and power switch line up with openings in its top and right walls.
   frame_back.stl      the back plate and the sensor foot, split face (the flat ring) down.
-  frame_caps.stl      three button caps (G3, G4 and power), flange down.
+  frame_caps.stl      three button caps (G3, G4 and power), standing on their ends.
   frame_backer.stl    a flat plate behind the panel, which is flexible: it holds it flat against the
                       lip. Printed flat; its edges clip into grooves in the bezel.
   frame_fit_test.stl  the first 2.4 mm of the bezel all round, plus its top right corner at full
@@ -90,7 +90,7 @@ COLUMN_R = 2.3
 
 # --- Button caps ---
 CAP_FACE = (6.4, 3.0)                # the part you press: length along the edge x height (Z)
-CAP_FLANGE = (8.6, 4.4, 0.8)
+CAP_FLANGE = (6.4, 4.4, 0.8)       # same length as the face, so a cap prints standing on its end
 CAP_PROUD = 0.6                      # how far it stands out of the frame
 
 
@@ -273,13 +273,15 @@ def build_back():
 
 
 def cap(stem_len, nub_len):
-    """A button cap standing on its flange: flange at z 0..ft, stem above, nub below."""
+    """A button cap: flange at z 0..ft, the stem you press above it, a ridge below that presses the
+    switch. The same cross-section along its whole length (x), so it prints standing on its end
+    with no overhangs. The flange catches above and below the hole (y), which keeps it in."""
     fx, fy, ft = CAP_FLANGE
     cw, ch = CAP_FACE
-    flange = box(-fx / 2, fx / 2, -fy / 2, fy / 2, 0, ft)
+    flange = box(-cw / 2, cw / 2, -fy / 2, fy / 2, 0, ft)
     stem = box(-cw / 2, cw / 2, -ch / 2, ch / 2, ft, ft + stem_len)
-    nub = box(-1.4, 1.4, -1.0, 1.0, -nub_len, 0)
-    return flange + stem + nub
+    ridge = box(-cw / 2, cw / 2, -1.0, 1.0, -nub_len, 0)
+    return flange + stem + ridge
 
 
 # The top wall: outer face Y0, flange recess from Y0 + 1.7. The right wall: outer X1, recess to X1 - 1.7.
@@ -288,10 +290,11 @@ PWR_NUB = (X1 - 1.7 - CAP_FLANGE[2]) - (PWR_TIP_X + 0.15)
 
 
 def build_caps():
-    """Printed stem up: two for the top buttons (G4, G3) and one for the power switch."""
-    fx = CAP_FLANGE[0]
+    """Two for the top buttons (G4, G3) and one, with the longer ridge, for the power switch, each
+    standing on its end for printing."""
     parts = [cap(1.7 + CAP_PROUD, KEY_NUB), cap(1.7 + CAP_PROUD, KEY_NUB), cap(1.7 + CAP_PROUD, PWR_NUB)]
-    return union([p.translate([i * (fx + 4), 0, 0]) for i, p in enumerate(parts)])
+    upright = [p.rotate([0, 90, 0]).translate([0, i * (CAP_FLANGE[1] + 5), 0]) for i, p in enumerate(parts)]
+    return union(upright)
 
 
 def build_backer():

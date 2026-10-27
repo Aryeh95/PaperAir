@@ -33,7 +33,7 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 | `stl/frame_fit_test.stl` | **Print this first**, face down as exported | About an hour. See the checks below. |
 | `stl/frame_bezel.stl` | Face down, as exported | No supports |
 | `stl/frame_back.stl` | Flat ring down, as exported | No supports. The grille bridges are about 30 mm long. |
-| `stl/frame_caps.stl` | Flange down, as exported | Three caps: two for the top buttons, and the one with the longer nub for the power switch |
+| `stl/frame_caps.stl` | Standing on end, as exported, with a brim | Three caps, 6.4 mm tall. Two are for the top buttons; the one with the longer ridge is for the power switch. No overhangs. |
 | `stl/frame_backer.stl` | Flat, as exported | Backing plate. The panel is flexible, so this holds it flat against the lip. |
 
 ### Fit test
