@@ -91,8 +91,8 @@ SCREWS = [(X0 + 2.5, Y0 + 2.3), (X1 - 2.5, Y0 + 2.3), (X0 + 2.5, GLASS_H - 1.5),
 COLUMN_R = 2.3
 
 # --- Button caps ---
-CAP_FACE = (6.4, 3.0)                # the part you press: length along the edge x height (Z)
-CAP_FLANGE = (6.4, 4.4, 0.8)       # same length as the face, so a cap prints standing on its end
+CAP_FACE = (5.0, 3.0)                # the part you press: length along the edge x height (Z)
+CAP_FLANGE = (5.0, 4.4, 0.8)       # same length as the face, so a cap prints standing on its end
 CAP_PROUD = 0.6                      # how far it stands out of the frame
 
 
@@ -145,24 +145,35 @@ def outline(z0, z1):
     return prism(rr(X0, X1, Y0, Y1, RADIUS), z0, z1)
 
 
+def roofed(x0, x1, y0, y1, z0, z1, span_x=True):
+    """A box with a 45 degree roof over its span (X or Y), so its top prints with a short bridge
+    when the bezel is face down. The roof stops 1 mm short of the back of the bezel."""
+    rise = max(0.0, min((x1 - x0 if span_x else y1 - y0) / 2 - 1.0, ZS - 1.0 - z1))
+    if span_x:
+        top = box(x0 + rise, x1 - rise, y0, y1, z1, z1 + rise)
+    else:
+        top = box(x0, x1, y0 + rise, y1 - rise, z1, z1 + rise)
+    return Manifold.batch_hull([box(x0, x1, y0, y1, z0, z1), top])
+
+
 def key_cap_cut(x):
-    """Opening and flange recess in the top wall for one cap."""
+    """Opening and flange recess in the top wall for one cap. The recess is open at the back,
+    so it needs no bridge; the hole holds the cap in Z."""
     fx, fy, ft = CAP_FLANGE
-    hole = box(x - CAP_FACE[0] / 2 - 0.2, x + CAP_FACE[0] / 2 + 0.2, Y0 - 1, Y0 + 2.2,
-               KEY_Z - CAP_FACE[1] / 2 - 0.2, KEY_Z + CAP_FACE[1] / 2 + 0.2)
-    recess = box(x - fx / 2 - 0.3, x + fx / 2 + 0.3, Y0 + 1.7, 0,
-                 KEY_Z - fy / 2 - 0.3, KEY_Z + fy / 2 + 0.3)
-    notch = box(x - 2.5, x + 2.5, KEY_TIP_Y - 0.3, 0, KEY_Z - 1.8, KEY_Z + 1.8)
+    hole = roofed(x - CAP_FACE[0] / 2 - 0.2, x + CAP_FACE[0] / 2 + 0.2, Y0 - 1, Y0 + 2.2,
+                  KEY_Z - CAP_FACE[1] / 2 - 0.2, KEY_Z + CAP_FACE[1] / 2 + 0.2)
+    recess = box(x - fx / 2 - 0.3, x + fx / 2 + 0.3, Y0 + 1.7, 0, KEY_Z - fy / 2 - 0.3, ZS + 1)
+    notch = box(x - 2.5, x + 2.5, KEY_TIP_Y - 0.3, 0, KEY_Z - 1.8, ZS + 1)
     return hole + recess + notch
 
 
 def pwr_cap_cut():
     fx, fy, ft = CAP_FLANGE
     inner = X1 - 2.8
-    hole = box(X1 - 1.8, X1 + 1, PWR_Y - CAP_FACE[0] / 2 - 0.2, PWR_Y + CAP_FACE[0] / 2 + 0.2,
-               KEY_Z - CAP_FACE[1] / 2 - 0.2, KEY_Z + CAP_FACE[1] / 2 + 0.2)
+    hole = roofed(X1 - 1.8, X1 + 1, PWR_Y - CAP_FACE[0] / 2 - 0.2, PWR_Y + CAP_FACE[0] / 2 + 0.2,
+                  KEY_Z - CAP_FACE[1] / 2 - 0.2, KEY_Z + CAP_FACE[1] / 2 + 0.2, span_x=False)
     recess = box(PWR_TIP_X + 0.2, X1 - 1.7, PWR_Y - fx / 2 - 0.3, PWR_Y + fx / 2 + 0.3,
-                 KEY_Z - fy / 2 - 0.3, KEY_Z + fy / 2 + 0.3)
+                 KEY_Z - fy / 2 - 0.3, ZS + 1)
     return hole + recess
 
 
