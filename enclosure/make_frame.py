@@ -8,6 +8,8 @@ Parts (all print without supports):
                       USB-C and power switch line up with openings in its top and right walls.
   frame_back.stl      the back plate and the sensor foot, split face (the flat ring) down.
   frame_caps.stl      three button caps (G3, G4 and power), flange down.
+  frame_backer.stl    a flat plate behind the panel, which is flexible: it holds it flat against the
+                      lip. Printed flat; its edges clip into grooves in the bezel.
   frame_fit_test.stl  the first 2.4 mm of the bezel all round, plus its top right corner at full
                       depth: shows the lip, the pocket, the buttons and the USB-C opening in
                       about an hour.
@@ -50,6 +52,13 @@ USB_TIP_X = GLASS_W + 4.6            # front of the USB-C socket
 PWR_Y = 54.5                         # power switch centre on the right end
 PWR_TIP_X = GLASS_W + 4.2
 FPC_EXIT = (BOARD_X0, 7.0, 16.0)     # FPC-I2S cable leaves from under the board's inner edge, Y range
+FLEX_Y = (9.0, 16.0)                 # the panel's own flex strip runs along its back, tab to board
+
+# --- Backing plate: the panel is flexible, so a flat plate behind it (left of the board) keeps it
+# flat against the lip. Its top and bottom edges clip into grooves in the bezel. ---
+BACKER_T = 1.2
+BACKER_X = (0.5, BOARD_X0 - 1.5)     # stops short of the board's connectors
+GROOVE = 0.6
 
 # --- Frame ---
 LIP = 1.0                            # thickness of the printed lip in front of the glass
@@ -166,6 +175,10 @@ def build_bezel():
     bez += union(cols)
     bez -= box(-CLEAR, GLASS_W + CLEAR, -CLEAR, GLASS_H + CLEAR, LIP, ZS + 1)   # keep the pocket clear
     bez -= union([zcyl(x, y, ZS - 5.5, ZS + 1, SCREW_PILOT / 2) for x, y in SCREWS])
+    # Grooves for the backing plate's edges
+    zb0 = LIP + GLASS_T
+    for y0, y1 in ((-CLEAR - GROOVE, -CLEAR + 0.01), (GLASS_H + CLEAR - 0.01, GLASS_H + CLEAR + GROOVE)):
+        bez -= box(BACKER_X[0] - 0.5, BACKER_X[1] + 0.5, y0, y1, zb0 - 0.05, zb0 + BACKER_T + 0.3)
     # Buttons on top, power on the right end, USB-C on the right end
     bez -= union([key_cap_cut(x) for x in KEYS_X])
     bez -= pwr_cap_cut()
@@ -281,6 +294,14 @@ def build_caps():
     return union([p.translate([i * (fx + 4), 0, 0]) for i, p in enumerate(parts)])
 
 
+def build_backer():
+    """In place behind the glass; printed flat (front face down)."""
+    z0 = LIP + GLASS_T + 0.05
+    plate = box(BACKER_X[0], BACKER_X[1], -CLEAR - GROOVE + 0.15, GLASS_H + CLEAR + GROOVE - 0.15, z0, z0 + BACKER_T)
+    plate -= box(BACKER_X[0] - 1, BACKER_X[1] + 1, FLEX_Y[0] - 1, FLEX_Y[1] + 1, z0 - 1, z0 + 0.5)   # clear of the flex strip
+    return plate
+
+
 def build_fit_test(bezel):
     ring = bezel ^ box(-1000, 1000, -1000, 1000, -1, 2.4)
     corner = bezel ^ (box(KEYS_X[0] - 8, 1000, -1000, 12, -1, 100) + box(GLASS_W - 4, 1000, -1000, 1000, -1, 100))
@@ -306,10 +327,10 @@ def main():
     ap.add_argument("--out", default="stl")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
-    bezel, back, caps = build_bezel(), build_back(), build_caps()
+    bezel, back, caps, backer = build_bezel(), build_back(), build_caps(), build_backer()
     fit = build_fit_test(bezel)
     for name, part, flip in (("frame_bezel", bezel, False), ("frame_back", back, False),
-                             ("frame_caps", caps, False), ("frame_fit_test", fit, False)):
+                             ("frame_caps", caps, False), ("frame_backer", backer, False), ("frame_fit_test", fit, False)):
         print(f"{name}: {part.volume():.0f} mm^3, {part.status()}, genus {part.genus()}")
         on_bed(part, flip).export(os.path.join(args.out, name + ".stl"))
     w = world(bezel + back)

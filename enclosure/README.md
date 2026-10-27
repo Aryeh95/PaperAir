@@ -34,6 +34,7 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 | `stl/frame_bezel.stl` | Face down, as exported | No supports |
 | `stl/frame_back.stl` | Flat ring down, as exported | No supports. The grille bridges are about 30 mm long. |
 | `stl/frame_caps.stl` | Flange down, as exported | Three caps: two for the top buttons, and the one with the longer nub for the power switch |
+| `stl/frame_backer.stl` | Flat, as exported | Backing plate. The panel is flexible, so this holds it flat against the lip. |
 
 ### Fit test
 
@@ -65,14 +66,16 @@ If anything is off, tell me what you see, or change the measurement constants at
 1. Put the three caps into their openings from the inside.
 2. Lay the panel face down in the bezel, with the board on the right-hand end. Plug the FPC cable
    into the board's FPC-I2S socket and the battery into its socket.
-3. Put a strip of foam tape on the back of the board, so the back plate presses it gently against
+3. Clip the backing plate in behind the panel, left of the board. Seat one long edge in its groove,
+   then press the other edge in. Its shallow channel goes over the panel's flex strip.
+4. Put a strip of foam tape on the back of the board, so the back plate presses it gently against
    the lip.
-4. In the back part:
+5. In the back part:
    - Press the SEN66 between its ribs, grilles side against the back wall. The ribs grip it.
    - Stick the SFA40 to the inside of its grille, sensor facing out.
    - Stick the breakout and the battery behind the board area.
-5. Run the FPC cable down along the board's inner edge to the breakout. Wire the sensors (see Wiring).
-6. Close the back and fit the four screws. Stick the feet into their recesses.
+6. Run the FPC cable down along the board's inner edge to the breakout. Wire the sensors (see Wiring).
+7. Close the back and fit the four screws. Stick the feet into their recesses.
 
 The panel's flex tab folds round the left end of the glass. There's room for it inside the left wall.
 
@@ -81,7 +84,8 @@ The panel's flex tab folds round the left end of the glass. There's room for it 
 These come from photos and calipers:
 - the board's button, USB-C and power switch positions
 - how far the button actuators stick out
-- the glass thickness: 1.2 mm is an estimate
+- the panel thickness: 1.2 mm is an estimate. Measure it on the plain part, away from the board.
+  The backing plate's grooves are set from it (`GLASS_T`).
 
 The fit test checks all of them. The constants are at the top of `make_frame.py`.
 
