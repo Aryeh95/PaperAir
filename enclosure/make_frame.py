@@ -36,26 +36,30 @@ from manifold3d import CrossSection, JoinType, Manifold, Mesh, OpType
 
 SEG = 48
 
-# --- Panel and board, measured (see enclosure/README.md) ---
-GLASS_W, GLASS_H = 110.5, 62.0       # ED047TC1 glass, without its flex tab
-ACTIVE_W, ACTIVE_H = 105.6, 59.4     # the picture: 960 x 540 at 0.11 mm
-ACTIVE_X, ACTIVE_Y = 3.6, 1.3        # its top left corner on the glass (the wide border is at the tab end)
-STACK = 4.7                          # glass plus board, front of glass to back of board
-GLASS_T = 1.2                        # glass alone (M5Stack's drawing)
-# The board sits behind the right-hand end of the glass and reaches past it. Its features are
-# measured from its end, which rests against the frame's right-hand wall (fit tests).
-BOARD_END = GLASS_W + 3.0            # the board's end, past the glass's right-hand edge
-BOARD_X0 = BOARD_END - 51.4          # its inner edge
-# Board edge features, in this orientation (buttons on top)
-KEYS_X = (BOARD_END - 43.8, BOARD_END - 32.4)   # G4, G3 centres along the top edge
+# --- Panel and board. From M5Stack's dimension drawings and case model (K159-B in M5_Hardware),
+# checked against the fit tests; see enclosure/README.md ---
+GLASS_W, GLASS_H = 110.5, 62.0       # ED047TC1 glass, without the flex stub at its left end (calipers; drawing 110.54 x 62.5)
+ACTIVE_W, ACTIVE_H = 105.02, 59.72   # the picture
+ACTIVE_X = 1.49                      # from the glass's left end: the wide border (4.0) is at the board end
+ACTIVE_Y = (GLASS_H - ACTIVE_H) / 2  # centred across
+STACK = 4.7                          # glass plus board, front of glass to back of board (calipers)
+GLASS_T = 1.2
+# The board sits behind the right-hand end of the glass and reaches past it. Along the frame it is
+# located by its end, which rests against the right-hand wall; across, by its two nubs.
+BOARD_END = GLASS_W + 4.46           # the board's end, past the glass's right-hand edge
+BOARD_X0 = BOARD_END - 51.4          # its inner edge (fit test)
+BOARD_W = 61.15                      # across, without the nubs; centred on the glass
+BOARD_TOP = (GLASS_H - BOARD_W) / 2
+# Board edge features, in this orientation (buttons on top), from the board's end and top edge
+KEYS_X = (BOARD_END - 42.0, BOARD_END - 30.0)   # G4, G3 centres along the top edge
 KEY_TIP_Y = -1.0                     # how far the button actuators reach above the glass edge
-KEY_Z = 2.8                          # their centre, measured from the front face
-USB_Y, USB_Z = 6.8, 3.6              # USB-C centre on the right end (fit test, and M5Stack's drawing for Z)
-USB_TIP_X = BOARD_END - 0.2          # front of the USB-C socket
-PWR_Y, PWR_Z = 54.7, 3.7             # power switch centre on the right end
+KEY_Z = 2.9                          # their centre, measured from the front face
+USB_Y, USB_Z = BOARD_TOP + 6.98, 3.4   # USB-C centre on the right end
+USB_TIP_X = BOARD_END + 2.05         # its socket stands out past the board
+PWR_Y, PWR_Z = BOARD_TOP + BOARD_W - 6.77, KEY_Z   # power switch centre on the right end
 PWR_TIP_X = BOARD_END - 0.6
 NUBS_X = (BOARD_END - 8.4, BOARD_END - 5.4)   # two nubs, one on each long edge, near the right end
-NUB_OUT = 1.1                        # how far they reach beyond the glass: 64.2 mm across both
+NUB_OUT = (64.2 - GLASS_H) / 2       # how far they reach beyond the glass: 64.2 mm across both
 FPC_EXIT = (BOARD_X0, 7.0, 16.0)     # FPC-I2S cable leaves from under the board's inner edge, Y range
 FLEX_Y = (9.0, 16.0)                 # the panel's own flex strip runs along its back, tab to board
 
@@ -68,7 +72,8 @@ GROOVE = 0.6
 # --- Frame ---
 LIP = 1.0                            # thickness of the printed lip in front of the glass
 CLEAR = 0.25                         # around the glass in its pocket
-WINDOW_MARGIN = 0.3                  # window opening beyond the picture on each side
+WINDOW_MARGIN = 0.15                 # window opening beyond the picture on each side, at the back of the lip
+CHAMFER = 0.5                        # the lip's front edge, so the window doesn't shadow the picture
 X0, X1 = -5.0, BOARD_END + 3.2       # outer: room for the folded flex tab on the left, USB-C on the right
 STOP = 4.0                           # stops at the glass's corners hold it in place along X; the flex
                                      # tab and its fold are between the stops at the left end
@@ -185,20 +190,23 @@ def pwr_cap_cut():
 def build_bezel():
     bez = outline(0, ZS)
     # The window, and behind it the pocket for the glass and board
-    bez -= box(ACTIVE_X - WINDOW_MARGIN, ACTIVE_X + ACTIVE_W + WINDOW_MARGIN,
-               ACTIVE_Y - WINDOW_MARGIN, ACTIVE_Y + ACTIVE_H + WINDOW_MARGIN, -1, LIP + 0.01)
+    wx0, wx1 = ACTIVE_X - WINDOW_MARGIN, ACTIVE_X + ACTIVE_W + WINDOW_MARGIN
+    wy0, wy1 = ACTIVE_Y - WINDOW_MARGIN, ACTIVE_Y + ACTIVE_H + WINDOW_MARGIN
+    bez -= Manifold.batch_hull([box(wx0 - CHAMFER, wx1 + CHAMFER, wy0 - CHAMFER, wy1 + CHAMFER, -1, 0),
+                                box(wx0, wx1, wy0, wy1, CHAMFER, LIP + 0.01)])
     bez -= box(X0 + WALL, X1 - 2.8, -CLEAR, GLASS_H + CLEAR, LIP, ZS + 1)
     # Corner columns for the screws that hold the back on
     cols = [zcyl(x, y, LIP, ZS, COLUMN_R) for x, y in SCREWS]
     bez += union(cols)
     bez -= box(-CLEAR, GLASS_W + CLEAR, -CLEAR, GLASS_H + CLEAR, LIP, ZS + 1)   # keep the pocket clear
-    bez -= box(NUBS_X[0] - 1.0, NUBS_X[1] + 1.0, -NUB_OUT - 0.4, GLASS_H + NUB_OUT + 0.4, LIP, ZS + 1)
+    # The nubs locate the board across; their recesses are long, since the end wall locates it along
+    bez -= box(NUBS_X[0] - 1.0, NUBS_X[1] + 1.0, -NUB_OUT - 0.2, GLASS_H + NUB_OUT + 0.2, LIP, ZS + 1)
     # Stops at the glass's four corners, so it can't slide along X. At the right-hand end they are
     # only as thick as the glass, in front of the board.
     for y0, y1 in ((-CLEAR, STOP), (GLASS_H - STOP, GLASS_H + CLEAR)):
         bez += box(X0 + WALL - 0.1, -CLEAR, y0, y1, LIP - 0.01, ZS)
-    # Short at the right-hand end: the USB-C is 2.3 mm from the top edge
-    for y0, y1 in ((-CLEAR, 2.0), (GLASS_H - 2.0, GLASS_H + CLEAR)):
+    # Short at the right-hand end: the USB-C socket is 2.5 mm from the top edge
+    for y0, y1 in ((-CLEAR, 1.5), (GLASS_H - 1.5, GLASS_H + CLEAR)):
         bez += box(GLASS_W + CLEAR, GLASS_W + 1.5, y0, y1, LIP - 0.01, LIP + GLASS_T - 0.1)
     bez -= union([zcyl(x, y, ZS - 5.5, ZS + 1, SCREW_PILOT / 2) for x, y in SCREWS])
     # Grooves for the backing plate's edges

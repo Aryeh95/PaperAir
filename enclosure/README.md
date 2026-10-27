@@ -13,9 +13,11 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 
 ![The slim frame: front, back, with the back removed, and a section through the SEN66](render_frame.png)
 
-- **Screen:** the panel sits behind a printed lip with no acrylic. The lip overlaps the glass by
-  1.25 mm and stops 0.3 mm short of the picture.
-- **Board:** sits behind the right-hand end of the glass, as it does when plugged in.
+- **Screen:** the panel sits behind a printed lip with no acrylic. The window is the picture plus
+  0.15 mm, with a chamfered edge, like M5Stack's case. Small stops at the corners hold the glass in
+  place.
+- **Board:** sits behind the right-hand end of the glass and reaches 4.5 mm past it. Its end rests
+  against the right-hand wall, and its two nubs sit in recesses that locate it across.
   - **Buttons:** G4 and G3 come through the top edge under two printed caps.
   - **Power switch:** also under a cap, on the right end.
   - **USB-C:** opening on the right end, near the top.
@@ -24,7 +26,7 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
   - **SFA40:** behind its own small grille on the right.
   - **FPC breakout, its capacitor and the battery:** behind the board.
 - **Cable:** the FPC cable runs down inside, along the board's inner edge.
-- **Sizes:** 121.7 wide × 68 tall × 36 deep. The screen part is 9 mm thick.
+- **Sizes:** 123 wide × 68 tall × 36 deep. The screen part is 9 mm thick.
 
 ### Parts
 
@@ -42,10 +44,12 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 
 Drop the plugged-together panel and board into it, face down, then check:
 
-1. **Pocket:** the glass drops in without forcing and doesn't rattle. There should be about 0.25 mm all round.
-   Near the right end, the board has a small nub on each long edge. Each nub sits in its own recess.
+1. **Pocket:** the glass drops in without forcing, with its left end between the two stops, and
+   doesn't rattle. Near the right end, the board has a small nub on each long edge. Each nub sits in
+   its own recess, and the board's end touches the right-hand wall.
 2. **Lip:** from the front, the lip covers the glass edge on all four sides but none of the
-   picture. Press G3 to flash the screen black and look at the edges.
+   picture. Press G3 to flash the screen black and look at the edges. The picture is 1.5 mm from
+   the glass's left end and 4 mm from its right end, so the lip is wider on the right.
 3. **Buttons:** put the caps in from the inside. Each should click its switch with a light press,
    and the screen shouldn't change unless you press. The power cap does the same on the right end.
 4. **USB-C:** a cable plugs in fully.
@@ -86,12 +90,20 @@ and rests with its end against the right-hand wall.
 
 ### Measured, and worth checking
 
-These come from photos, calipers and M5Stack's dimension drawing:
-- the board's button, USB-C and power switch positions
-- how far the button actuators stick out
-- the two nubs on the board's long edges. They make it 64.2 mm across there, against 62 mm for
-  the glass (`NUBS_X`, `NUB_OUT`).
+Most of the numbers come from M5Stack's dimension drawings of the panel, the board and the case,
+and from the case model in
+[M5_Hardware](https://github.com/m5stack/M5_Hardware/tree/master/Products/K159-B_PaperDIY_Complete_Kit),
+checked against fit-test prints:
+- the picture's position on the glass, and the window in the stock case
+- the board's end, 4.46 mm past the glass, and its button, USB-C and power switch positions,
+  measured from that end
+- the two nubs on the board's long edges. They make it 64.2 mm across, against 62 mm for the glass
+  (`NUBS_X`, `NUB_OUT`).
 - the panel thickness, 1.2 mm. The backing plate's grooves are set from it (`GLASS_T`).
+
+From calipers and photos:
+- the glass, 110.5 × 62 mm (the drawing says 62.5; if yours is, `GLASS_H` in `make_frame.py`)
+- the board's inner edge, and how far the button actuators stick out
 
 The fit test checks all of them. The constants are at the top of `make_frame.py`.
 
