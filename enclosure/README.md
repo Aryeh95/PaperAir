@@ -24,7 +24,7 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
   - **SFA40:** behind its own small grille on the right.
   - **FPC breakout, its capacitor and the battery:** behind the board.
 - **Cable:** the FPC cable runs down inside, along the board's inner edge.
-- **Sizes:** 123.5 wide × 68 tall × 36 deep. The screen part is 9 mm thick.
+- **Sizes:** 121.7 wide × 68 tall × 36 deep. The screen part is 9 mm thick.
 
 ### Parts
 
@@ -67,8 +67,9 @@ If anything is off, tell me what you see, or change the measurement constants at
 1. Put the three caps into their openings from the inside.
 2. Lay the panel face down in the bezel, with the board on the right-hand end. Plug the FPC cable
    into the board's FPC-I2S socket and the battery into its socket.
-3. Clip the backing plate in behind the panel, left of the board. Seat one long edge in its groove,
-   then press the other edge in. Its shallow channel goes over the panel's flex strip.
+3. Clip the backing plate in behind the panel, left of the board, bevelled side first. Seat one
+   long edge in its groove, bow the plate slightly, and press the other edge down until it clicks
+   in. Its shallow channel goes over the panel's flex strip.
 4. Put a strip of foam tape on the back of the board, so the back plate presses it gently against
    the lip.
 5. In the back part:
@@ -78,7 +79,10 @@ If anything is off, tell me what you see, or change the measurement constants at
 6. Run the FPC cable down along the board's inner edge to the breakout. Wire the sensors (see Wiring).
 7. Close the back and fit the four screws. Stick the feet into their recesses.
 
-The panel's flex tab folds round the left end of the glass. There's room for it inside the left wall.
+The panel's flex tab folds round the left end of the glass. There's room for it inside the left wall,
+between two small stops at the corners. Those stops, and two at the right-hand corners, hold the
+glass in place along its length. The board is a separate part, joined to the panel only by the flex,
+and rests with its end against the right-hand wall.
 
 ### Measured, and worth checking
 

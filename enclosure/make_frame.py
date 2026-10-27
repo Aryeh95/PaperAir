@@ -42,16 +42,19 @@ ACTIVE_W, ACTIVE_H = 105.6, 59.4     # the picture: 960 x 540 at 0.11 mm
 ACTIVE_X, ACTIVE_Y = 3.6, 1.3        # its top left corner on the glass (the wide border is at the tab end)
 STACK = 4.7                          # glass plus board, front of glass to back of board
 GLASS_T = 1.2                        # glass alone (M5Stack's drawing)
-BOARD_X0 = GLASS_W - 46.6            # the board covers the right-hand end of the glass
+# The board sits behind the right-hand end of the glass and reaches past it. Its features are
+# measured from its end, which rests against the frame's right-hand wall (fit tests).
+BOARD_END = GLASS_W + 3.0            # the board's end, past the glass's right-hand edge
+BOARD_X0 = BOARD_END - 51.4          # its inner edge
 # Board edge features, in this orientation (buttons on top)
-KEYS_X = (GLASS_W - 39.0, GLASS_W - 27.6)   # G4, G3 centres along the top edge (measured on the fit test)
+KEYS_X = (BOARD_END - 43.8, BOARD_END - 32.4)   # G4, G3 centres along the top edge
 KEY_TIP_Y = -1.0                     # how far the button actuators reach above the glass edge
-KEY_Z = 3.3                          # their centre, measured from the front face
+KEY_Z = 2.8                          # their centre, measured from the front face
 USB_Y, USB_Z = 6.8, 3.6              # USB-C centre on the right end (fit test, and M5Stack's drawing for Z)
-USB_TIP_X = GLASS_W + 4.6            # front of the USB-C socket
-PWR_Y = 53.9                         # power switch centre on the right end (measured on the fit test)
-PWR_TIP_X = GLASS_W + 4.2
-NUBS_X = (GLASS_W - 3.6, GLASS_W - 0.6)   # two nubs, one on each long edge, near the right end (M5Stack's drawing)
+USB_TIP_X = BOARD_END - 0.2          # front of the USB-C socket
+PWR_Y, PWR_Z = 54.7, 3.7             # power switch centre on the right end
+PWR_TIP_X = BOARD_END - 0.6
+NUBS_X = (BOARD_END - 8.4, BOARD_END - 5.4)   # two nubs, one on each long edge, near the right end
 NUB_OUT = 1.1                        # how far they reach beyond the glass: 64.2 mm across both
 FPC_EXIT = (BOARD_X0, 7.0, 16.0)     # FPC-I2S cable leaves from under the board's inner edge, Y range
 FLEX_Y = (9.0, 16.0)                 # the panel's own flex strip runs along its back, tab to board
@@ -66,7 +69,9 @@ GROOVE = 0.6
 LIP = 1.0                            # thickness of the printed lip in front of the glass
 CLEAR = 0.25                         # around the glass in its pocket
 WINDOW_MARGIN = 0.3                  # window opening beyond the picture on each side
-X0, X1 = -5.0, GLASS_W + 8.0         # outer: room for the folded flex tab on the left, USB-C on the right
+X0, X1 = -5.0, BOARD_END + 3.2       # outer: room for the folded flex tab on the left, USB-C on the right
+STOP = 4.0                           # stops at the glass's corners hold it in place along X; the flex
+                                     # tab and its fold are between the stops at the left end
 Y0, Y1 = -4.0, GLASS_H + 4.0
 RADIUS = 3.0
 WALL = 1.6
@@ -78,7 +83,7 @@ TILT = math.radians(13)
 SEN = (55.0, 26.0, 21.2)             # SEN66: length (X), width (Y), depth (Z)
 SEN_X0 = 4.0
 SEN_Z0 = GLASS_T + LIP + 3.3         # in front of it: the glass, the flex and 3 mm for its wires
-FOOT_X0, FOOT_X1 = 0.0, 113.5        # inset from the frame's sides, leaving room for the corner screws
+FOOT_X0, FOOT_X1 = 0.0, X1 - 5.0        # inset from the frame's sides, leaving room for the corner screws
 FLOOR = 2.4                          # foot floor thickness (rubber feet sit in it)
 T_FOOT = SEN_Z0 + SEN[2] + 0.2 + WALL
 SFA = (17.5, 15.0, 4.0)              # SFA40 module: X, Y, Z
@@ -91,8 +96,8 @@ SCREWS = [(X0 + 2.5, Y0 + 2.3), (X1 - 2.5, Y0 + 2.3), (X0 + 2.5, GLASS_H - 1.5),
 COLUMN_R = 2.3
 
 # --- Button caps ---
-CAP_FACE = (5.0, 3.0)                # the part you press: length along the edge x height (Z)
-CAP_FLANGE = (5.0, 4.4, 0.8)       # same length as the face, so a cap prints standing on its end
+CAP_FACE = (5.0, 2.4)                # the part you press: length along the edge x height (Z)
+CAP_FLANGE = (5.0, 3.6, 0.8)       # same length as the face, so a cap prints standing on its end
 CAP_PROUD = 0.6                      # how far it stands out of the frame
 
 
@@ -171,9 +176,9 @@ def pwr_cap_cut():
     fx, fy, ft = CAP_FLANGE
     inner = X1 - 2.8
     hole = roofed(X1 - 1.8, X1 + 1, PWR_Y - CAP_FACE[0] / 2 - 0.2, PWR_Y + CAP_FACE[0] / 2 + 0.2,
-                  KEY_Z - CAP_FACE[1] / 2 - 0.2, KEY_Z + CAP_FACE[1] / 2 + 0.2, span_x=False)
+                  PWR_Z - CAP_FACE[1] / 2 - 0.2, PWR_Z + CAP_FACE[1] / 2 + 0.2, span_x=False)
     recess = box(PWR_TIP_X + 0.2, X1 - 1.7, PWR_Y - fx / 2 - 0.3, PWR_Y + fx / 2 + 0.3,
-                 KEY_Z - fy / 2 - 0.3, ZS + 1)
+                 PWR_Z - fy / 2 - 0.3, ZS + 1)
     return hole + recess
 
 
@@ -188,6 +193,13 @@ def build_bezel():
     bez += union(cols)
     bez -= box(-CLEAR, GLASS_W + CLEAR, -CLEAR, GLASS_H + CLEAR, LIP, ZS + 1)   # keep the pocket clear
     bez -= box(NUBS_X[0] - 1.0, NUBS_X[1] + 1.0, -NUB_OUT - 0.4, GLASS_H + NUB_OUT + 0.4, LIP, ZS + 1)
+    # Stops at the glass's four corners, so it can't slide along X. At the right-hand end they are
+    # only as thick as the glass, in front of the board.
+    for y0, y1 in ((-CLEAR, STOP), (GLASS_H - STOP, GLASS_H + CLEAR)):
+        bez += box(X0 + WALL - 0.1, -CLEAR, y0, y1, LIP - 0.01, ZS)
+    # Short at the right-hand end: the USB-C is 2.3 mm from the top edge
+    for y0, y1 in ((-CLEAR, 2.0), (GLASS_H - 2.0, GLASS_H + CLEAR)):
+        bez += box(GLASS_W + CLEAR, GLASS_W + 1.5, y0, y1, LIP - 0.01, LIP + GLASS_T - 0.1)
     bez -= union([zcyl(x, y, ZS - 5.5, ZS + 1, SCREW_PILOT / 2) for x, y in SCREWS])
     # Grooves for the backing plate's edges
     zb0 = LIP + GLASS_T
@@ -315,14 +327,18 @@ def build_caps():
 def build_backer():
     """In place behind the glass; printed flat (front face down)."""
     z0 = LIP + GLASS_T + 0.05
-    plate = box(BACKER_X[0], BACKER_X[1], -CLEAR - GROOVE + 0.15, GLASS_H + CLEAR + GROOVE - 0.15, z0, z0 + BACKER_T)
+    # Its edges reach 0.3 mm into the grooves, with a bevel on the side that goes in first, so it
+    # flexes past the pocket's edge and clicks in.
+    y0, y1 = -CLEAR - 0.3, GLASS_H + CLEAR + 0.3
+    plate = Manifold.batch_hull([box(BACKER_X[0], BACKER_X[1], y0 + 0.5, y1 - 0.5, z0, z0 + 0.01),
+                                 box(BACKER_X[0], BACKER_X[1], y0, y1, z0 + 0.5, z0 + BACKER_T)])
     plate -= box(BACKER_X[0] - 1, BACKER_X[1] + 1, FLEX_Y[0] - 1, FLEX_Y[1] + 1, z0 - 1, z0 + 0.5)   # clear of the flex strip
     return plate
 
 
 def build_fit_test(bezel):
     ring = bezel ^ box(-1000, 1000, -1000, 1000, -1, 2.4)
-    corner = bezel ^ (box(KEYS_X[0] - 8, 1000, -1000, 12, -1, 100) + box(GLASS_W - 4, 1000, -1000, 1000, -1, 100))
+    corner = bezel ^ (box(KEYS_X[0] - 8, 1000, -1000, 12, -1, 100) + box(X1 - 12, 1000, -1000, 1000, -1, 100))
     return ring + corner
 
 
