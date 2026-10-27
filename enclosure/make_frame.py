@@ -53,10 +53,10 @@ BOARD_TOP = (GLASS_H - BOARD_W) / 2
 # Board edge features, in this orientation (buttons on top), from the board's end and top edge
 KEYS_X = (BOARD_END - 42.0, BOARD_END - 30.0)   # G4, G3 centres along the top edge
 KEY_TIP_Y = -1.0                     # how far the button actuators reach above the glass edge
-KEY_Z = 2.9                          # their centre, measured from the front face
+KEY_Z = 2.4                          # their centre, measured from the front face (fit test v7)
 USB_Y, USB_Z = BOARD_TOP + 6.98, 3.4   # USB-C centre on the right end
 USB_TIP_X = BOARD_END + 2.05         # its socket stands out past the board
-PWR_Y, PWR_Z = BOARD_TOP + BOARD_W - 6.77, KEY_Z   # power switch centre on the right end
+PWR_Y, PWR_Z = BOARD_TOP + BOARD_W - 7.1, KEY_Z   # power switch centre on the right end (fit test v7)
 PWR_TIP_X = BOARD_END - 0.6
 NUBS_X = (BOARD_END - 8.4, BOARD_END - 5.4)   # two nubs, one on each long edge, near the right end
 NUB_OUT = (64.2 - GLASS_H) / 2       # how far they reach beyond the glass: 64.2 mm across both
