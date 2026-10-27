@@ -52,7 +52,7 @@ BOARD_X0 = BOARD_END - 51.4          # its inner edge (fit test)
 BOARD_W = 61.15                      # across, without the nubs; centred on the glass
 BOARD_TOP = (GLASS_H - BOARD_W) / 2
 # Board edge features, in this orientation (buttons on top), from the board's end and top edge
-KEYS_X = (BOARD_END - 42.0, BOARD_END - 30.0)   # G4, G3 centres along the top edge
+KEYS_X = (BOARD_END - 42.3, BOARD_END - 30.3)   # G4, G3 centres along the top edge (fit test v9)
 KEY_TIP_Y = -1.0                     # how far the button actuators reach above the glass edge
 KEY_Z = 2.4                          # their centre, measured from the front face (fit test v7)
 USB_Y, USB_Z = BOARD_TOP + 6.73, 3.4   # USB-C centre on the right end (fit test v9)
