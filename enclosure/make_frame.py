@@ -92,7 +92,7 @@ SEN_Z0 = GLASS_T + LIP + 3.3         # in front of it: the glass, the flex and 3
 FOOT_X0, FOOT_X1 = 0.0, X1 - 5.0        # inset from the frame's sides, leaving room for the corner screws
 FLOOR = 2.4                          # foot floor thickness (rubber feet sit in it)
 T_FOOT = SEN_Z0 + SEN[2] + 0.2 + WALL
-SFA = (17.5, 15.0, 4.0)              # SFA40 module: X, Y, Z
+SFA = (17.3, 15.2, 3.6)              # SFA40 carrier board, 16.9 x 14.8 x 3.4 measured, plus 0.2 to 0.4 clearance: X, Y, Z
 SFA_X0 = FOOT_X1 - WALL - 0.4 - SFA[0]
 
 # --- Screws: 4 x M2 x 6 (thread-forming / PT, or plain M2 into the printed hole) ---

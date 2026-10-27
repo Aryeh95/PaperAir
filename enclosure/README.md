@@ -64,7 +64,7 @@ If anything is off, tell me what you see, or change the measurement constants at
 |---|---|
 | 4 | M2 × 6 screws, thread-forming ("PT") or plain M2 (they cut their own thread in the printed holes) |
 | 4 | 10 mm round rubber feet, 2 mm thick |
-| — | 1.5–2 mm double-sided foam tape: a strip on the back of the board, a pad for the SFA40 and the breakout |
+| — | 1 mm double-sided foam tape: a strip on the back of the board, a pad for the SFA40 board and the breakout |
 | 1 | FPC cable, 12-way 0.5 mm, 150 mm, the same as for the stand, plus the breakout and capacitor (see Wiring) |
 
 ### Assembly
@@ -79,7 +79,8 @@ If anything is off, tell me what you see, or change the measurement constants at
    the lip.
 5. In the back part:
    - Press the SEN66 between its ribs, grilles side against the back wall. The ribs grip it.
-   - Stick the SFA40 to the inside of its grille, sensor facing out.
+   - Stick the SFA40's carrier board to the inside of its grille, sensor can facing out and its four
+     solder pads toward the SEN66. Solder the wires on before it goes in.
    - Stick the breakout and the battery behind the board area.
 6. Run the FPC cable down along the board's inner edge to the breakout. Wire the sensors (see Wiring).
 7. Close the back and fit the four screws. Stick the feet into their recesses.
