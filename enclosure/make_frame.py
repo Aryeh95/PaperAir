@@ -55,7 +55,7 @@ BOARD_TOP = (GLASS_H - BOARD_W) / 2
 KEYS_X = (BOARD_END - 42.0, BOARD_END - 30.0)   # G4, G3 centres along the top edge
 KEY_TIP_Y = -1.0                     # how far the button actuators reach above the glass edge
 KEY_Z = 2.4                          # their centre, measured from the front face (fit test v7)
-USB_Y, USB_Z = BOARD_TOP + 6.98, 3.4   # USB-C centre on the right end
+USB_Y, USB_Z = BOARD_TOP + 6.73, 3.4   # USB-C centre on the right end (fit test v9)
 USB_TIP_X = BOARD_END + 2.05         # its socket stands out past the board
 PWR_Y, PWR_Z = BOARD_TOP + BOARD_W - 7.1, KEY_Z   # power switch centre on the right end (fit test v7)
 PWR_TIP_X = BOARD_END - 0.6
@@ -73,8 +73,8 @@ GROOVE = 0.6
 # --- Frame ---
 LIP = 1.0                            # thickness of the printed lip in front of the glass
 CLEAR = 0.25                         # around the glass in its pocket
-WINDOW_MARGIN = 0.15                 # window opening beyond the picture on each side, at the back of the lip
-CHAMFER = 0.5                        # the lip's front edge, so the window doesn't shadow the picture
+WINDOW_MARGIN = -0.3                 # the lip overlaps the picture by 0.3 mm (3 pixels), so no border shows with the glass's play
+CHAMFER = 0.4                        # the lip's front edge, so the window doesn't shadow the picture
 X0, X1 = -STUB - 0.6 - 1.6, BOARD_END + 3.2   # outer: the flex stub lies flat past the glass on the left, USB-C on the right
 STOP = 4.0                           # stops at the glass's corners hold it in place along X; the flex
                                      # tab and its fold are between the stops at the left end

@@ -13,9 +13,9 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 
 ![The slim frame: front, back, with the back removed, and a section through the SEN66](render_frame.png)
 
-- **Screen:** the panel sits behind a printed lip with no acrylic. The window is the picture plus
-  0.15 mm, with a chamfered edge, like M5Stack's case. Small stops at the corners hold the glass in
-  place.
+- **Screen:** the panel sits behind a printed lip with no acrylic. The lip overlaps the picture by
+  0.3 mm (3 pixels, inside the screen's own margin), so none of the panel's black border shows.
+  Small stops at the corners hold the glass in place.
 - **Board:** sits behind the right-hand end of the glass and reaches 4.5 mm past it. Its end rests
   against the right-hand wall, and its two nubs sit in recesses that locate it across.
   - **Buttons:** G4 and G3 come through the top edge under two printed caps.
@@ -48,8 +48,9 @@ Drop the plugged-together panel and board into it, face down, then check:
    doesn't rattle. Near the right end, the board has a small nub on each long edge. Each nub sits in
    its own recess, and the board's end touches the right-hand wall.
 2. **Lip:** from the front, the lip covers the glass edge on all four sides but none of the
-   picture. Press G3 to flash the screen black and look at the edges. The picture is 4 mm from
-   the glass's flex end and 1.5 mm from its board end, so the lip is wider on the left.
+   picture beyond its outermost 3 pixels. Press G3 to flash the screen black and look at the
+   edges. The picture is 4 mm from the glass's flex end and 1.5 mm from its board end, so the lip
+   is wider on the left.
 3. **Buttons:** put the caps in from the inside. Each should click its switch with a light press,
    and the screen shouldn't change unless you press. The power cap does the same on the right end.
 4. **USB-C:** a cable plugs in fully.
