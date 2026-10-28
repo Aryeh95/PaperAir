@@ -18,9 +18,9 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
   panel's black border shows. Small stops at the corners hold the glass in place.
 - **Board:** sits behind the right-hand end of the glass and reaches 4.5 mm past it. Its end rests
   against the right-hand wall, and its two nubs sit in recesses that locate it across.
-  - **Buttons:** G4 and G3 are pressed through two fingers in the top wall's outer skin, each fixed
-    at both ends, with a pad outside and a nub inside. No loose parts.
-  - **Power switch:** the same, in a shallow dish in the right-hand wall.
+  - **Buttons:** G4 and G3 are pressed through two fingers in the top wall's outer skin, 8 mm long
+    and fixed at one end, with a pad outside and a nub inside. About 0.7 N to click. No loose parts.
+  - **Power switch:** the same, in the right-hand wall.
   - **USB-C:** opening on the right end, near the top.
 - **Foot:** at the bottom-back, 28.5 mm deep, with a 45° shoulder up to the back plate. It holds:
   - **SEN66:** behind the left half of the glass, breathing through two grilles in the back.

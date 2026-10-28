@@ -117,18 +117,19 @@ SCREW_CLEAR = 2.4
 SCREWS = [(X0 + 2.5, Y0 + 2.3), (X1 - 2.5, Y0 + 2.3), (X0 + 2.5, GLASS_H - 1.5), (X1 - 2.2, GLASS_H + 1.6)]   # the last one clears the board's end
 COLUMN_R = 2.3
 
-# --- Built-in buttons: a finger in the wall's outer skin, fixed at both ends, with slits above and
-# below it. A pad on its outer face is what you press; a nub on its inner face reaches the switch.
-# Fixed at both ends, its first layer prints as a bridge, so it needs no support. ---
-FINGER_L = 9.0                       # along the wall, between its two roots
-FINGER_Z = (2.0, 4.0)                # across the wall's height; the switch actuators are at Z 2.0 to 2.8
-FINGER_T = 0.8                       # thick
-SLIT = 0.6                           # above and below it
-PAD = (3.0, 0.6)                     # the pad: length along the wall, how far it stands proud
+# --- Built-in buttons: a finger in the wall's outer skin, fixed at one end, lying 0.3 mm above the
+# front plate so it prints face down without support (its first layer goes over the plate, not air).
+# A pad on its outer face is what you press; a nub on its inner face reaches the switch. 8 mm long
+# and 0.7 thick, it moves the 0.3 mm a switch needs with about 0.7 N. ---
+FINGER_L = 8.0                       # along the wall, root to free end
+FINGER_T = 0.7                       # thick
+FINGER_Z = (LIP + 0.3, LIP + 2.3)    # across the wall's height: covers the actuators at Z 2.0 to 2.8
+SLIT = 0.6                           # past the free end and above the finger
+PAD = (2.5, 0.6)                     # the pad: length along the wall, how far it stands proud
 NUB_W = 1.6                          # the nub, along the wall: narrower than the 1.9 mm actuator
-NUB_Z = (2.0, 2.8)                   # across: its underside is flush with the finger's
+NUB_TOP = 2.8                        # the nub runs from the finger's underside up to here
 NUB_SHORT = 0.15                     # the nub stops this short of the actuator
-PWR_DISH = 0.0                       # the end wall could be dished around the power finger; with the actuator 1.5 mm proud it needn't be
+NUB_FROM_END = 2.0                   # the switch's centre, measured from the finger's free end
 
 
 # ---------------------------------------------------------------------------------------------
@@ -180,16 +181,23 @@ def outline(z0, z1):
     return prism(rr(X0, X1, Y0, Y1, RADIUS), z0, z1)
 
 
-def finger(along, inward, tip, c):
-    """One built-in button, centred on the switch at c along the wall. Returns (cut, add).
+def finger(along, inward, tip, c, root_side=-1):
+    """One built-in button, with the switch at c along the wall. Returns (cut, add).
     `along(u0, u1, v0, v1, w0, w1)` makes a box in frame coordinates from u along the wall, v from
-    the wall's outer face inward, and w across its height (Z)."""
+    the wall's outer face inward, and w across its height (Z). root_side: -1 fixes the finger at the
+    lower-u end, +1 at the higher."""
     z0, z1 = FINGER_Z
-    u0, u1 = c - FINGER_L / 2, c + FINGER_L / 2
-    # the window: through the wall to the pocket, with the slits above and below the finger
-    cut = along(u0, u1, -1.0, inward + 0.01, z0 - SLIT, z1 + SLIT)
-    cut -= along(u0 - 1, u1 + 1, -1.0, FINGER_T, z0, z1)          # the finger, in the outer skin
-    nub = along(c - NUB_W / 2, c + NUB_W / 2, FINGER_T - 0.01, tip - NUB_SHORT, NUB_Z[0], NUB_Z[1])
+    if root_side < 0:
+        u_root, u_free = c - (FINGER_L - NUB_FROM_END), c + NUB_FROM_END
+        w0, w1 = u_root, u_free + SLIT
+    else:
+        u_root, u_free = c + (FINGER_L - NUB_FROM_END), c - NUB_FROM_END
+        w0, w1 = u_free - SLIT, u_root
+    # the window: through the wall to the pocket, down to the front plate and SLIT above the finger
+    cut = along(w0, w1, -1.0, inward + 0.01, LIP - 0.01, z1 + SLIT)
+    cut -= along(min(u_root, u_free) - 1, max(u_root, u_free) + 1, -1.0, FINGER_T, z0, z1)   # the finger
+    cut += along(w0 - 1 if root_side > 0 else w1 - 0.01, w0 + 0.01 if root_side > 0 else w1 + 1, -1.0, FINGER_T, z0 - 0.01, z1 + 0.01) ^ along(w0, w1, -1.0, inward, LIP - 0.01, z1 + SLIT)   # the slit past the free end
+    nub = along(c - NUB_W / 2, c + NUB_W / 2, FINGER_T - 0.01, tip - NUB_SHORT, z0, NUB_TOP)
     pad = Manifold.batch_hull([along(c - PAD[0] / 2, c + PAD[0] / 2, -0.01, 0.0, z0, z1),
                                along(c - PAD[0] / 2, c + PAD[0] / 2, -PAD[1], 0.0, z0 + PAD[1], z1)])
     return cut, nub + pad
@@ -202,14 +210,9 @@ def key_finger(x):
 
 
 def pwr_finger():
-    """Right wall, dished PWR_DISH deep around it: u = y, v from the dish's floor inward (-x), w = z."""
-    xo = X1 - PWR_DISH
-    along = lambda u0, u1, v0, v1, w0, w1: box(xo - v1, xo - v0, u0, u1, w0, w1)
-    xw = BOARD_END - TAB_OUT + PWR_TAB_OUT + 0.3                  # the wall's inner face at the power tab
-    cut, add = finger(along, xo - xw, xo - PWR_TIP_X, PWR_Y)
-    if PWR_DISH > 0:
-        cut += box(xo, X1 + 1, PWR_Y - FINGER_L / 2 - 0.5, PWR_Y + FINGER_L / 2 + 0.5, LIP - 0.01, ZS + 1)
-    return cut, add
+    """Right wall: u = y, v from the outer face at X1 inward (-x), w = z. Fixed at its upper end."""
+    along = lambda u0, u1, v0, v1, w0, w1: box(X1 - v1, X1 - v0, u0, u1, w0, w1)
+    return finger(along, X1 - (BOARD_END + 0.3), X1 - PWR_TIP_X, PWR_Y)
 
 
 def build_bezel():
