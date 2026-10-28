@@ -1,13 +1,37 @@
 # Enclosures
 
-Two ways to house the PaperDIY with the sensors:
+Three ways to house the PaperDIY with the sensors:
 
-- **[Slim frame](#slim-frame)**: for the bare PaperDIY board and panel, without M5Stack's case. A
-  thin printed frame around the screen, with a foot at the bottom-back for the sensors.
-- **[Desk stand](#desk-stand)**: for a PaperDIY in M5Stack's case. A low base that the PaperDIY
-  stands in.
+- **[Saddle](#saddle)** (recommended): the PaperDIY in M5Stack's own case, standing in a one-piece
+  saddle with the sensors in a foot behind it. M5Stack's parts do all the fitting of the panel,
+  board and buttons.
+- **[Slim frame](#slim-frame)**: for the bare board and panel, without M5Stack's case. A thin
+  printed frame around the screen. It fits the panel, but its built-in buttons never came right.
+- **[Desk stand](#desk-stand)**: a low base that the cased PaperDIY stands in. Bulkier than the
+  saddle.
 
 Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's buttons end up on top.
+
+## Saddle
+
+The PaperDIY in M5Stack's case drops into it from the top: a 2 mm lip in front of the bezel's bottom
+edge (the window starts 3.6 mm up, so nothing is hidden), two small ears at the ends, and a foot
+behind, leaning the whole thing back 13°. The foot is the slim frame's foot: SEN66 on fins behind
+two grilles, SFA40 in a recess behind its own grille, breakout and battery beside them, rubber feet
+underneath. 124 × 44 × 63 mm with the case in it.
+
+| File | Print | Notes |
+|---|---|---|
+| M5Stack's bezel and three button caps | As M5Stack's | From [M5_Hardware](https://github.com/m5stack/M5_Hardware/tree/master/Products/K159-B_PaperDIY_Complete_Kit/Structures) (MIT licence, © M5Stack), unchanged |
+| M5Stack's back plate, with a slot | As M5Stack's | `python make_saddle.py --out stl --oem PaperDlY_Complete_Kit.stl` cuts an 11 × 12 mm slot over the board's I2S connector, so the FPC cable leaves straight out the back |
+| `stl/saddle.stl` | Standing on its bottom face, as exported | No supports |
+
+**Assembly:** plug the FPC cable into the I2S connector (the one at the board's inner edge, 5–15 mm
+from the buttons' edge) before closing M5Stack's case; the cable comes out through the slot. Stand
+the case in the saddle. The cable lies in the groove in the saddle's face behind the case and
+enters the foot through the opening at the groove's end. Load the foot as for the slim frame:
+SFA40 and breakout against the back wall, battery in front, SEN66 last onto its fins. Wire as in
+[Wiring](#wiring). Set `kFlipScreen = true`.
 
 ## Slim frame
 
