@@ -17,6 +17,10 @@ constexpr float kTemperatureOffsetC = 0.0f;
 // Turn the picture upside down, for mounting the PaperDIY the other way up
 constexpr bool kFlipScreen = false;
 
+// The red LED on the back of the board, next to the power switch. It's the power chip's power
+// indicator; off by default, since the display is on all the time anyway.
+constexpr bool kPowerLed = false;
+
 // How often the screen may redraw when only numbers have changed. Advice changes and button
 // presses redraw straight away.
 constexpr unsigned long kScreenUpdateMs = 60UL * 1000UL;

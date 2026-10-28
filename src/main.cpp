@@ -210,6 +210,7 @@ void setup() {
   auto cfg = M5.config();
   cfg.clear_display = false;  // the first screen does a full refresh anyway
   M5.begin(cfg);
+  M5.Power.M5pm1.setLedEnLevel(config::kPowerLed);  // the red LED by the power switch
   Serial.begin(115200);
   Serial.println("PaperAir starting");
 

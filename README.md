@@ -86,7 +86,8 @@ the FPC wiring:
 
    `secrets.h` is ignored by git, so none of this leaves your computer.
 3. Look through [`include/config.h`](include/config.h). It sets the time zone, °F or °C, the
-   12/24-hour clock, the temperature offset, flipping the screen and how often it refreshes.
+   12/24-hour clock, the temperature offset, flipping the screen, the red LED on the back and how
+   often it refreshes.
 4. Connect the PaperDIY by USB and run `pio run -t upload`. Use `pio device monitor` to watch the
    log.
 
