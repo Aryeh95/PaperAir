@@ -59,13 +59,13 @@ KEY_Z = 2.4                          # their centre, measured from the front fac
 USB_Y, USB_Z = BOARD_TOP + 6.73, 3.4   # USB-C centre on the right end (fit test v9)
 USB_TIP_X = BOARD_END + 2.05         # its socket stands out past the tab
 PWR_Y, PWR_Z = BOARD_TOP + BOARD_W - 7.1, KEY_Z   # power switch centre on the right end (fit test v7)
-PWR_TIP_X = BOARD_END - 3.0 - 0.6     # on the recessed part of the end
-NUBS_X = (BOARD_END - 8.56, BOARD_END - 6.84)   # two nubs, one on each long edge, near the right end (drawing: 6.84 from the end, 1.72 long)
-NUB_FIT = 1.0                        # clearance at each end of a nub's recess (the tab locates the board along the frame)
-# The board's end is not straight: a tab 15 mm wide at the USB-C corner stands 3 mm proud of the rest
+# The board's end is not straight: a tab 15 mm wide at the USB-C corner stands 4 mm proud of the rest
 # of the end edge, with a 45 degree step (calipers). The power switch is on the recessed part, and the
 # corner there is chamfered.
-TAB_W, TAB_OUT, TAB_STEP = 15.0, 3.0, 3.0
+TAB_W, TAB_OUT, TAB_STEP = 15.0, 4.0, 3.0
+PWR_TIP_X = BOARD_END - TAB_OUT - 0.6   # on the recessed part of the end
+NUBS_X = (BOARD_END - 8.56, BOARD_END - 6.84)   # two nubs, one on each long edge, near the right end (drawing: 6.84 from the end, 1.72 long)
+NUB_FIT = 1.0                        # clearance at each end of a nub's recess (the tab locates the board along the frame)
 CORNER_CHAMFER = 1.0
 NUB_OUT = (64.2 - GLASS_H) / 2       # how far they reach beyond the glass: 64.2 mm across both
 FPC_EXIT = (BOARD_X0, 7.0, 16.0)     # FPC-I2S cable leaves from under the board's inner edge, Y range
