@@ -4,11 +4,12 @@ thin printed frame that leans back 13 degrees, with a foot at the bottom-back th
 SEN66, the optional SFA40, the FPC breakout and the battery.
 
 Parts (all print without supports):
-  frame_bezel.stl     front face down. The printed lip holds the glass; the board's buttons,
-                      USB-C and power switch line up with openings in its top and right walls.
+  frame_bezel.stl     front face down. The printed lip holds the glass. The board's two buttons and
+                      its power switch are pressed through fingers cut into the top and right walls,
+                      each fixed at one end, with a pad outside and a nub inside; the USB-C has an
+                      opening in the right wall.
   frame_back.stl      the back plate and the sensor foot, standing on its bottom face (the one that
                       sits on the desk), so the back wall and the foot print as walls, not a ceiling.
-  frame_caps.stl      three button caps (G3, G4 and power), standing on their ends.
   frame_backer.stl    a flat plate behind the panel, which is flexible: it holds it flat against the
                       lip. Printed flat; its edges clip into grooves in the bezel.
   frame_fit_test.stl  the first 2.4 mm of the bezel all round, plus its top right corner at full
@@ -114,10 +115,15 @@ SCREW_CLEAR = 2.4
 SCREWS = [(X0 + 2.5, Y0 + 2.3), (X1 - 2.5, Y0 + 2.3), (X0 + 2.5, GLASS_H - 1.5), (X1 - 2.5, GLASS_H - 0.5)]
 COLUMN_R = 2.3
 
-# --- Button caps ---
-CAP_FACE = (5.0, 2.4)                # the part you press: length along the edge x height (Z)
-CAP_FLANGE = (5.0, 3.6, 0.8)       # same length as the face, so a cap prints standing on its end
-CAP_PROUD = 0.6                      # how far it stands out of the frame
+# --- Built-in buttons: a finger cut into the wall, fixed at one end, free on the other three sides.
+# A pad on its outer face is what you press; a nub on its inner face reaches the switch. ---
+FINGER_L = 10.0                      # along the wall, root to free end
+FINGER_Z = (1.8, 4.8)                # across the wall's height; the switches are at Z 2.4
+FINGER_T = 1.0                       # thick; it's the outer skin of the wall
+SLIT = 0.6                           # around the free sides; prints as a gap
+PAD_PROUD = 0.6                      # how far the pad stands out of the wall
+NUB_W = 1.6                          # along the wall, centred on the switch: narrower than the actuator, so it can't land on the switch body
+NUB_Z = (1.9, 3.4)                   # across; a 45 degree underside, so it prints
 
 
 # ---------------------------------------------------------------------------------------------
@@ -169,36 +175,41 @@ def outline(z0, z1):
     return prism(rr(X0, X1, Y0, Y1, RADIUS), z0, z1)
 
 
-def roofed(x0, x1, y0, y1, z0, z1, span_x=True):
-    """A box with a 45 degree roof over its span (X or Y), so its top prints with a short bridge
-    when the bezel is face down. The roof stops 1 mm short of the back of the bezel."""
-    rise = max(0.0, min((x1 - x0 if span_x else y1 - y0) / 2 - 1.0, ZS - 1.0 - z1))
-    if span_x:
-        top = box(x0 + rise, x1 - rise, y0, y1, z1, z1 + rise)
-    else:
-        top = box(x0, x1, y0 + rise, y1 - rise, z1, z1 + rise)
-    return Manifold.batch_hull([box(x0, x1, y0, y1, z0, z1), top])
+def finger(along, across, outer, inward, tip, root_side, nub_c, pad_c):
+    """One built-in button. Returns (cut, add). `along` maps a coordinate along the wall to (x, y)
+    etc: it's a function u, v, w -> box in frame coordinates, where u runs along the wall, v from
+    the wall's outer face inward (0 at the outer face), w across the wall's height (Z).
+    root_side is -1 or +1: which end along the wall the finger is fixed at.
+    nub_c, pad_c: centres along the wall of the nub (the switch) and the pad."""
+    z0, z1 = FINGER_Z
+    u0, u1 = (nub_c - 7.0, nub_c - 7.0 + FINGER_L) if root_side < 0 else (nub_c + 7.0 - FINGER_L, nub_c + 7.0)
+    # the window: through the whole wall thickness to the pocket, around the finger and behind it,
+    # leaving the root end attached
+    win_u0, win_u1 = (u0, u1 + SLIT) if root_side < 0 else (u0 - SLIT, u1)
+    cut = along(win_u0, win_u1, -1.0, inward + 0.01, z0 - SLIT, z1 + SLIT)
+    keep = along(u0, u1, -1.0, FINGER_T, z0, z1)            # the finger itself, at the outer face
+    cut = cut - keep
+    # the nub, from the finger's inner face to 0.15 short of the switch, with a 45 degree underside
+    nz0, nz1 = NUB_Z
+    reach = tip - FINGER_T
+    nub = Manifold.batch_hull([along(nub_c - NUB_W / 2, nub_c + NUB_W / 2, FINGER_T - 0.01, FINGER_T, nz0, nz1),
+                               along(nub_c - NUB_W / 2, nub_c + NUB_W / 2, FINGER_T - 0.01, tip, min(nz0 + reach, nz1 - 0.2), nz1)])
+    # the pad outside, over the nub, with a 45 degree underside too
+    pad = Manifold.batch_hull([along(pad_c - 2.25, pad_c + 2.25, -0.01, 0.0, z0, z1),
+                               along(pad_c - 2.25, pad_c + 2.25, -PAD_PROUD, 0.0, z0 + PAD_PROUD, z1)])
+    return cut, nub + pad
 
 
-def key_cap_cut(x):
-    """Opening and flange recess in the top wall for one cap. The recess is open at the back,
-    so it needs no bridge; the hole holds the cap in Z."""
-    fx, fy, ft = CAP_FLANGE
-    hole = roofed(x - CAP_FACE[0] / 2 - 0.2, x + CAP_FACE[0] / 2 + 0.2, Y0 - 1, Y0 + 2.2,
-                  KEY_Z - CAP_FACE[1] / 2 - 0.2, KEY_Z + CAP_FACE[1] / 2 + 0.2)
-    recess = box(x - fx / 2 - 0.3, x + fx / 2 + 0.3, Y0 + 1.7, 0, KEY_Z - fy / 2 - 0.3, ZS + 1)
-    notch = box(x - 2.5, x + 2.5, KEY_TIP_Y - 0.3, 0, KEY_Z - 1.8, ZS + 1)
-    return hole + recess + notch
+def key_finger(x):
+    """Top wall: u = x, v from the outer face at Y0 inward (+y), w = z. Fixed at its left end."""
+    along = lambda u0, u1, v0, v1, w0, w1: box(u0, u1, Y0 + v0, Y0 + v1, w0, w1)
+    return finger(along, None, Y0, -CLEAR_Y - Y0, (KEY_TIP_Y - 0.15) - Y0, -1, x, x + 0.5)
 
 
-def pwr_cap_cut():
-    fx, fy, ft = CAP_FLANGE
-    inner = X1 - 2.8
-    hole = roofed(X1 - 1.8, X1 + 1, PWR_Y - CAP_FACE[0] / 2 - 0.2, PWR_Y + CAP_FACE[0] / 2 + 0.2,
-                  PWR_Z - CAP_FACE[1] / 2 - 0.2, PWR_Z + CAP_FACE[1] / 2 + 0.2, span_x=False)
-    recess = box(PWR_TIP_X + 0.2, X1 - 1.7, PWR_Y - fx / 2 - 0.3, PWR_Y + fx / 2 + 0.3,
-                 PWR_Z - fy / 2 - 0.3, ZS + 1)
-    return hole + recess
+def pwr_finger():
+    """Right wall: u = y, v from the outer face at X1 inward (-x), w = z. Fixed at its upper end."""
+    along = lambda u0, u1, v0, v1, w0, w1: box(X1 - v1, X1 - v0, u0, u1, w0, w1)
+    return finger(along, None, X1, X1 - (BOARD_END - TAB_OUT + 0.3), X1 - (PWR_TIP_X + 0.15), -1, PWR_Y, PWR_Y + 0.5)
 
 
 def build_bezel():
@@ -236,9 +247,10 @@ def build_bezel():
     bez += prism(tri, LIP + GLASS_T, ZS) ^ box(GLASS_W + CLEAR, X1 - 1.0, 0, GLASS_H + CLEAR_Y, LIP + GLASS_T, ZS)
     bez -= union([zcyl(x, y, ZS - 5.5, ZS + 1, SCREW_PILOT / 2) for x, y in SCREWS])
     # Buttons on top, power on the right end, USB-C on the right end
-    bez -= union([key_cap_cut(x) for x in KEYS_X])
-    bez -= pwr_cap_cut()
     bez -= usb_cut()
+    # The built-in buttons: cut each finger's window, then add its nub and pad
+    for cut, add in [key_finger(x) for x in KEYS_X] + [pwr_finger()]:
+        bez = (bez - cut) + add
     return above_desk(bez)
 
 
@@ -353,31 +365,6 @@ def build_back():
     return local(w)
 
 
-def cap(stem_len, nub_len):
-    """A button cap: flange at z 0..ft, the stem you press above it, a ridge below that presses the
-    switch. The same cross-section along its whole length (x), so it prints standing on its end
-    with no overhangs. The flange catches above and below the hole (y), which keeps it in."""
-    fx, fy, ft = CAP_FLANGE
-    cw, ch = CAP_FACE
-    flange = box(-cw / 2, cw / 2, -fy / 2, fy / 2, 0, ft)
-    stem = box(-cw / 2, cw / 2, -ch / 2, ch / 2, ft, ft + stem_len)
-    ridge = box(-cw / 2, cw / 2, -1.0, 1.0, -nub_len, 0)
-    return flange + stem + ridge
-
-
-# The top wall: outer face Y0, flange recess from Y0 + 1.7. The right wall: outer X1, recess to X1 - 1.7.
-KEY_NUB = (KEY_TIP_Y - 0.15) - (Y0 + 1.7 + CAP_FLANGE[2])     # flange inner face to 0.15 mm short of the actuator
-PWR_NUB = (X1 - 1.7 - CAP_FLANGE[2]) - (PWR_TIP_X + 0.15)
-
-
-def build_caps():
-    """Two for the top buttons (G4, G3) and one, with the longer ridge, for the power switch, each
-    standing on its end for printing."""
-    parts = [cap(1.7 + CAP_PROUD, KEY_NUB), cap(1.7 + CAP_PROUD, KEY_NUB), cap(1.7 + CAP_PROUD, PWR_NUB)]
-    upright = [p.rotate([0, 90, 0]).translate([0, i * (CAP_FLANGE[1] + 5), 0]) for i, p in enumerate(parts)]
-    return union(upright)
-
-
 def build_backer():
     """In place behind the glass; printed flat (front face down). It drops into the pocket with
     0.1 mm to spare each side; the back's ribs hold it against the panel."""
@@ -413,11 +400,11 @@ def main():
     ap.add_argument("--out", default="stl")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
-    bezel, back, caps, backer = build_bezel(), build_back(), build_caps(), build_backer()
+    bezel, back, backer = build_bezel(), build_back(), build_backer()
     fit = build_fit_test(bezel)
     back = world(back)   # printed standing on its bottom face, which is level with the desk
     for name, part, flip in (("frame_bezel", bezel, False), ("frame_back", back, False),
-                             ("frame_caps", caps, False), ("frame_backer", backer, False), ("frame_fit_test", fit, False)):
+                             ("frame_backer", backer, False), ("frame_fit_test", fit, False)):
         print(f"{name}: {part.volume():.0f} mm^3, {part.status()}, genus {part.genus()}")
         on_bed(part, flip).export(os.path.join(args.out, name + ".stl"))
     w = world(bezel) + back

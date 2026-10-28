@@ -18,8 +18,9 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
   panel's black border shows. Small stops at the corners hold the glass in place.
 - **Board:** sits behind the right-hand end of the glass and reaches 4.5 mm past it. Its end rests
   against the right-hand wall, and its two nubs sit in recesses that locate it across.
-  - **Buttons:** G4 and G3 come through the top edge under two printed caps.
-  - **Power switch:** also under a cap, on the right end.
+  - **Buttons:** G4 and G3 are pressed through two fingers cut into the top wall, each fixed at
+    one end with a pad outside and a nub inside. No loose parts.
+  - **Power switch:** the same, in the right-hand wall.
   - **USB-C:** opening on the right end, near the top.
 - **Foot:** at the bottom-back, 28.5 mm deep, with a 45° shoulder up to the back plate. It holds:
   - **SEN66:** behind the left half of the glass, breathing through two grilles in the back.
@@ -38,7 +39,6 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 | `stl/frame_fit_test.stl` | **Print this first**, face down as exported | About an hour. See the checks below. |
 | `stl/frame_bezel.stl` | Face down, as exported | No supports |
 | `stl/frame_back.stl` | Standing on its bottom face, as exported | No supports. The bottom face is the flat one that sits on the desk; the split face is vertical. Nothing overhangs more than 45°. |
-| `stl/frame_caps.stl` | Standing on end, as exported, with a brim | Three caps, 5 mm tall. Two are for the top buttons; the one with the longer ridge is for the power switch. No overhangs. |
 | `stl/frame_backer.stl` | Flat, as exported | Backing plate. The panel is flexible, so this holds it flat against the lip. It drops in; two ribs on the back hold it. |
 
 ### Fit test
@@ -55,8 +55,10 @@ Drop the plugged-together panel and board into it, face down, then check:
    picture beyond its outermost 5 pixels. Press G3 to flash the screen black and look at the
    edges. The picture is 4 mm from the glass's flex end and 1.5 mm from its board end, so the lip
    is wider on the left.
-3. **Buttons:** put the caps in from the inside. Each should click its switch with a light press,
-   and the screen shouldn't change unless you press. The power cap does the same on the right end.
+3. **Buttons:** press each of the three pads. Each should click its switch with a light press and
+   spring back, and the screen shouldn't change unless you press. If a pad has to go in a long way
+   before it clicks, the nub is short; if it clicks with no travel, it's long (`KEY_TIP_Y`,
+   `PWR_TIP_X`).
 4. **USB-C:** a cable plugs in fully.
 
 If anything is off, tell me what you see, or change the measurement constants at the top of
@@ -75,17 +77,16 @@ If anything is off, tell me what you see, or change the measurement constants at
 
 ![Exploded view: bezel and caps, panel and board, backing plate and foam tape, then the sensors, battery and breakout inside the back](render_exploded.png)
 
-1. Put the three caps into their openings from the inside.
-2. Lay the panel face down in the bezel, with the board on the right-hand end. Plug the FPC cable
+1. Lay the panel face down in the bezel, with the board on the right-hand end. Plug the FPC cable
    into the board's FPC-I2S socket and the battery into its socket.
-3. Drop the backing plate in behind the panel, left of the board, with its shallow channel over
+2. Drop the backing plate in behind the panel, left of the board, with its shallow channel over
    the panel's flex strip. It's loose until the back goes on; two ribs on the back then hold it
    against the panel.
-4. Foam tape on the back of the board, 2 mm, in an L: a strip along its top edge and one down its
+3. Foam tape on the back of the board, 2 mm, in an L: a strip along its top edge and one down its
    right-hand end, on the tallest parts there (that's what the 4.7 mm stack was measured over). The
    back plate compresses it to 1.7 mm, which holds the board against the glass. Push the board's end
    against the right-hand wall before closing up: that's what lines its buttons up with their caps.
-5. In the back part, deepest first:
+4. In the back part, deepest first:
    - Solder four wires to the SFA40's carrier board, then stick it into its recess in the back wall,
      can over the grille, solder pads toward the SEN66. It goes in through the opening behind the
      board.
@@ -93,9 +94,9 @@ If anything is off, tell me what you see, or change the measurement constants at
    - Lay the battery in the opening in front of them.
    - Slide the SEN66 in from the front: bottom edge onto the two fins, between the end fins, grilles
      against the back wall. Its top edge sits under the plate's edge and in the corner of the roof.
-6. Run the FPC cable down along the board's inner edge, in the gap in front of the back plate, and
+5. Run the FPC cable down along the board's inner edge, in the gap in front of the back plate, and
    into the opening to the breakout. Wire the sensors (see Wiring).
-7. Close the back and fit the four screws. Stick the feet into their recesses.
+6. Close the back and fit the four screws. Stick the feet into their recesses.
 
 The stiff part of the panel's flex reaches about 5 mm past the glass's left end. It lies flat between
 the two stops at the left-hand corners, with room before the wall, and the flex loops up from it and
