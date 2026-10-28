@@ -6,7 +6,8 @@ SEN66, the optional SFA40, the FPC breakout and the battery.
 Parts (all print without supports):
   frame_bezel.stl     front face down. The printed lip holds the glass; the board's buttons,
                       USB-C and power switch line up with openings in its top and right walls.
-  frame_back.stl      the back plate and the sensor foot, split face (the flat ring) down.
+  frame_back.stl      the back plate and the sensor foot, standing on its bottom face (the one that
+                      sits on the desk), so the back wall and the foot print as walls, not a ceiling.
   frame_caps.stl      three button caps (G3, G4 and power), standing on their ends.
   frame_backer.stl    a flat plate behind the panel, which is flexible: it holds it flat against the
                       lip. Printed flat; its edges clip into grooves in the bezel.
@@ -93,7 +94,10 @@ FOOT_X0, FOOT_X1 = 0.0, X1 - 5.0        # inset from the frame's sides, leaving 
 FLOOR = 2.4                          # foot floor thickness (rubber feet sit in it)
 T_FOOT = SEN_Z0 + SEN[2] + 0.2 + WALL
 SFA = (17.3, 15.2, 3.6)              # SFA40 carrier board, 16.9 x 14.8 x 3.4 measured, plus 0.2 to 0.4 clearance: X, Y, Z
-SFA_X0 = FOOT_X1 - WALL - 0.4 - SFA[0]
+STRIP_X0 = BOARD_END - 17.0           # a plate strip behind the board's right-hand end backs its foam tape there;
+                                     # the foot is open behind the rest of the board, for loading it
+SFA_X0 = STRIP_X0 + 1.5 - SFA[0]     # the SFA40 sits against the back wall, reachable through the opening
+SFA_RECESS = 0.6                     # a shallow pocket in the wall locates it; foam tape holds it
 
 # --- Screws: 4 x M2 x 6 (thread-forming / PT, or plain M2 into the printed hole) ---
 SCREW_PILOT = 1.7
@@ -229,10 +233,18 @@ def usb_cut():
 
 
 def foot_outer():
+    # The shoulder between the foot and the thin back plate slopes at 45 degrees, inside and out, so
+    # the back prints standing on its bottom face with no overhang
     step_y = SEN_Y0() - WALL - 0.3
+    rise = T_FOOT - T_THIN
     lower = prism(rr(FOOT_X0, FOOT_X1, step_y, Y1 + 30, 2.0), ZS, T_FOOT)
-    upper = prism(rr(FOOT_X0, FOOT_X1, step_y - 4.5, step_y - 4.0, 0.2), ZS, T_THIN)
+    upper = prism(rr(FOOT_X0, FOOT_X1, step_y - rise, step_y - rise + 0.5, 0.2), ZS, T_THIN)
     return Manifold.batch_hull([lower, upper])
+
+
+def PLATE_Y():
+    """How far down the back plate reaches behind the top of the foot, just short of the SEN66."""
+    return SEN_Y0() - 0.6
 
 
 def SEN_Y0():
@@ -266,14 +278,18 @@ def build_back():
     plate = outline(ZS, T_THIN)
     back = plate + foot_outer()
     step_y = SEN_Y0() - 0.3
+    rise = T_FOOT - T_THIN
     inner_lower = prism(rr(FOOT_X0 + WALL, FOOT_X1 - WALL, step_y, Y1 + 30, 0.8), ZS - 1, T_FOOT - WALL)
-    inner_upper = prism(rr(FOOT_X0 + WALL, FOOT_X1 - WALL, step_y - 4.5, step_y - 4.0, 0.2), ZS - 1, T_THIN - WALL)
+    inner_upper = prism(rr(FOOT_X0 + WALL, FOOT_X1 - WALL, step_y - rise, step_y - rise + 0.5, 0.2), ZS - 1, T_THIN - WALL)
     inner = Manifold.batch_hull([inner_lower, inner_upper])
     inner = local(world(inner) ^ box(-1000, 1000, -1000, 1000, FLOOR, 1000))
     back -= inner
-    # Keep a plate behind the whole board, so its foam tape has something to press against where the
-    # foot cavity would otherwise be open behind its lower half
-    back += foot_outer() ^ box(BOARD_X0 - 1.0, X1, 20.0, Y1 + 30, ZS, ZS + WALL)
+    # The sloped roof cuts into the plate's front skin; put the skin back down to just above the SEN66
+    back += outline(ZS, ZS + WALL) ^ box(X0 - 1, X1 + 1, Y0 - 1, PLATE_Y(), ZS - 1, ZS + WALL + 1)
+    # A plate strip behind the board's right-hand end, so the foam tape there has something to press
+    # against. Together with the solid plate along the board's top edge it backs the board in an L,
+    # and the foot stays open behind the rest of it.
+    back += foot_outer() ^ box(STRIP_X0, X1, 20.0, Y1 + 30, ZS, ZS + WALL)
     # Screw holes, counterbored for the heads
     for x, y in SCREWS:
         back -= zcyl(x, y, ZS - 1, T_THIN + 1, SCREW_CLEAR / 2)
@@ -289,18 +305,21 @@ def build_back():
         if h > 2:
             slots.append(grille([x], yc - h, yc + h))
     back -= union(slots)
-    # Crush ribs that hold the SEN66: two above it, two below, one at its left end
-    ribs = [box(x0 + 8, x0 + 10, y0 - 1.0, y0 + 0.15, ZS, z1),
-            box(x1 - 10, x1 - 8, y0 - 1.0, y0 + 0.15, ZS, z1),
-            box(FOOT_X0 + WALL - 0.5, x0 + 0.15, y0 + 8, y0 + 10, ZS, z1),
-            box(x0 + 8, x0 + 10, y1 - 0.15, y1 + 2.0, ZS, z1),
-            box(x1 - 10, x1 - 8, y1 - 0.15, y1 + 2.0, ZS, z1)]
-    back += above_desk(union(ribs), FLOOR - 0.1)
-    # SFA40 grille and the fins that locate it (it's stuck to the inside of its grille with foam tape)
+    # What holds the SEN66, all printable with the back standing on its bottom face: two fins rising
+    # from the floor under its bottom edge and a fin at each end, floor to back wall, each with 0.15 mm
+    # interference. Its top edge sits under the plate's edge at the front and in the corner of the
+    # sloped roof at the back.
+    zw = T_FOOT - WALL + 0.5                     # reaches 0.5 mm into the back wall
+    fins = [box(x0 + 8, x0 + 10, y1 - 0.15, y1 + 6, ZS + 1, zw),
+            box(x1 - 10, x1 - 8, y1 - 0.15, y1 + 6, ZS + 1, zw),
+            box(FOOT_X0 + WALL - 0.5, x0 + 0.15, y0 + 14, y1 + 6, ZS + 1, zw),
+            box(x1 - 0.15, x1 + 1.85, y0 + 14, y1 + 6, ZS + 1, zw)]
+    back += above_desk(union(fins), FLOOR - 0.1)
+    # SFA40: a shallow recess in the back wall locates its carrier board (stuck in with foam tape),
+    # and its grille is in the middle of the recess
     sx0, sx1, sy0, sy1, sz0, sz1 = sfa_box()
+    back -= box(sx0, sx1, sy0, sy1, sz1 - 0.01, sz1 + SFA_RECESS)
     back -= grille([sx0 + 4 + 2.8 * k for k in range(4)], sy0 + 3, sy1 - 3, 1.5)
-    fins = box(sx0 - 1.6, sx0 - 0.3, sy0, sy1, ZS, T_FOOT - WALL)
-    back += fins
     # The USB-C opening reaches into the back plate
     back -= usb_cut()
     # Level with the desk, and recesses for 10 mm rubber feet (2 mm thick, they stand 0.6 mm proud)
@@ -375,11 +394,12 @@ def main():
     os.makedirs(args.out, exist_ok=True)
     bezel, back, caps, backer = build_bezel(), build_back(), build_caps(), build_backer()
     fit = build_fit_test(bezel)
+    back = world(back)   # printed standing on its bottom face, which is level with the desk
     for name, part, flip in (("frame_bezel", bezel, False), ("frame_back", back, False),
                              ("frame_caps", caps, False), ("frame_backer", backer, False), ("frame_fit_test", fit, False)):
         print(f"{name}: {part.volume():.0f} mm^3, {part.status()}, genus {part.genus()}")
         on_bed(part, flip).export(os.path.join(args.out, name + ".stl"))
-    w = world(bezel + back)
+    w = world(bezel) + back
     bb = w.bounding_box()
     print(f"assembled: {bb[3] - bb[0]:.1f} wide, {bb[4] - bb[1]:.1f} deep, {bb[5] - bb[2]:.1f} tall")
 

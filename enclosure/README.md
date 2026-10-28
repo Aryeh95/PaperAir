@@ -21,10 +21,13 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
   - **Buttons:** G4 and G3 come through the top edge under two printed caps.
   - **Power switch:** also under a cap, on the right end.
   - **USB-C:** opening on the right end, near the top.
-- **Foot:** at the bottom-back, 28.5 mm deep. It holds:
+- **Foot:** at the bottom-back, 28.5 mm deep, with a 45° shoulder up to the back plate. It holds:
   - **SEN66:** behind the left half of the glass, breathing through two grilles in the back.
-  - **SFA40:** behind its own small grille on the right.
-  - **FPC breakout, its capacitor and the battery:** behind the board.
+  - **SFA40:** in a shallow recess in the back wall, behind the board, with its own grille.
+  - **FPC breakout, its capacitor and the battery:** behind the board too, through an opening in
+    the back plate there.
+- **Board:** backed by the plate along its top edge and down its right-hand end, with foam tape
+  between. The rest of the plate behind it is the opening into the foot.
 - **Cable:** the FPC cable runs down inside, along the board's inner edge.
 - **Sizes:** 125 wide × 68 tall × 36 deep. The screen part is 9 mm thick.
 
@@ -34,7 +37,7 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 |---|---|---|
 | `stl/frame_fit_test.stl` | **Print this first**, face down as exported | About an hour. See the checks below. |
 | `stl/frame_bezel.stl` | Face down, as exported | No supports |
-| `stl/frame_back.stl` | Flat ring down, as exported | No supports. The grille bridges are about 30 mm long. |
+| `stl/frame_back.stl` | Standing on its bottom face, as exported | No supports. The bottom face is the flat one that sits on the desk; the split face is vertical. Nothing overhangs more than 45°. |
 | `stl/frame_caps.stl` | Standing on end, as exported, with a brim | Three caps, 5 mm tall. Two are for the top buttons; the one with the longer ridge is for the power switch. No overhangs. |
 | `stl/frame_backer.stl` | Flat, as exported | Backing plate. The panel is flexible, so this holds it flat against the lip. |
 
@@ -77,15 +80,20 @@ If anything is off, tell me what you see, or change the measurement constants at
 3. Clip the backing plate in behind the panel, left of the board, bevelled side first. Seat one
    long edge in its groove, bow the plate slightly, and press the other edge down until it clicks
    in. Its shallow channel goes over the panel's flex strip.
-4. Put a strip of 2 mm foam tape down the back of the board, clear of its connectors. The back plate
-   compresses it to 1.7 mm, which holds the board against the glass. Push the board's end against the
-   right-hand wall before closing up: that's what lines its buttons up with their caps.
-5. In the back part:
-   - Press the SEN66 between its ribs, grilles side against the back wall. The ribs grip it.
-   - Stick the SFA40's carrier board to the inside of its grille, sensor can facing out and its four
-     solder pads toward the SEN66. Solder the wires on before it goes in.
-   - Stick the breakout and the battery behind the board area.
-6. Run the FPC cable down along the board's inner edge to the breakout. Wire the sensors (see Wiring).
+4. Foam tape on the back of the board, 2 mm, in an L: a strip along its top edge and one down its
+   right-hand end, on the tallest parts there (that's what the 4.7 mm stack was measured over). The
+   back plate compresses it to 1.7 mm, which holds the board against the glass. Push the board's end
+   against the right-hand wall before closing up: that's what lines its buttons up with their caps.
+5. In the back part, deepest first:
+   - Solder four wires to the SFA40's carrier board, then stick it into its recess in the back wall,
+     can over the grille, solder pads toward the SEN66. It goes in through the opening behind the
+     board.
+   - Stick the breakout to the back wall beside it, capacitor already soldered across 3V3 and GND.
+   - Lay the battery in the opening in front of them.
+   - Slide the SEN66 in from the front: bottom edge onto the two fins, between the end fins, grilles
+     against the back wall. Its top edge sits under the plate's edge and in the corner of the roof.
+6. Run the FPC cable down along the board's inner edge, in the gap in front of the back plate, and
+   into the opening to the breakout. Wire the sensors (see Wiring).
 7. Close the back and fit the four screws. Stick the feet into their recesses.
 
 The stiff part of the panel's flex reaches about 5 mm past the glass's left end. It lies flat between
