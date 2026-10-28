@@ -62,6 +62,7 @@ PWR_Y, PWR_Z = BOARD_TOP + BOARD_W - 7.1, KEY_Z   # power switch centre on the r
 PWR_TIP_X = BOARD_END - 0.6
 NUBS_X = (BOARD_END - 8.56, BOARD_END - 6.84)   # two nubs, one on each long edge, near the right end (drawing: 6.84 from the end, 1.72 long)
 NUB_FIT = 0.15                       # clearance at each end of a nub's recess: the nubs locate the board along the frame
+CORNER_CHAMFER = 3.0                 # the board's corner at the power switch is cut off at 45 degrees (ruler photo)
 NUB_OUT = (64.2 - GLASS_H) / 2       # how far they reach beyond the glass: 64.2 mm across both
 FPC_EXIT = (BOARD_X0, 7.0, 16.0)     # FPC-I2S cable leaves from under the board's inner edge, Y range
 FLEX_Y = (9.0, 16.0)                 # the panel's own flex strip runs along its back, tab to board
@@ -71,6 +72,7 @@ FLEX_Y = (9.0, 16.0)                 # the panel's own flex strip runs along its
 BACKER_T = 1.2
 BACKER_X = (4.0, BOARD_X0 - 1.5)     # clear of the flex stub's bond on the glass, and of the board's connectors
 BACKER_RIBS_X = (12.0, 46.0)         # the ribs' centres along the frame; they reach forward from the back plate
+BACKER_NOTCH = 7.0                   # the plate stops this far short of the board over the flex, which rises there to the board's connector
 
 # --- Frame ---
 LIP = 1.0                            # thickness of the printed lip in front of the glass
@@ -216,6 +218,11 @@ def build_bezel():
     # Short at the right-hand end: the USB-C socket is 2.5 mm from the top edge
     for y0, y1 in ((-CLEAR_Y, 1.5), (GLASS_H - 1.5, GLASS_H + CLEAR_Y)):
         bez += box(GLASS_W + CLEAR, GLASS_W + 1.5, y0, y1, LIP - 0.01, LIP + GLASS_T - 0.1)
+    # Fill the board's chamfered corner at the power switch, so the corner column holds it there too
+    c = CORNER_CHAMFER - 0.2
+    yb = BOARD_TOP + BOARD_W
+    tri = CrossSection([[[BOARD_END + 1, yb - c], [BOARD_END + 1, yb + 1], [BOARD_END - c - 1, yb + 1]]])
+    bez += prism(tri, LIP + GLASS_T, ZS) ^ box(GLASS_W + CLEAR, X1 - 1.0, 0, GLASS_H + CLEAR_Y, LIP + GLASS_T, ZS)
     bez -= union([zcyl(x, y, ZS - 5.5, ZS + 1, SCREW_PILOT / 2) for x, y in SCREWS])
     # Buttons on top, power on the right end, USB-C on the right end
     bez -= union([key_cap_cut(x) for x in KEYS_X])
@@ -365,6 +372,7 @@ def build_backer():
     0.1 mm to spare each side; the back's ribs hold it against the panel."""
     z0 = LIP + GLASS_T + 0.05
     plate = box(BACKER_X[0], BACKER_X[1], -CLEAR_Y + 0.1, GLASS_H + CLEAR_Y - 0.1, z0, z0 + BACKER_T)
+    plate -= box(BACKER_X[1] - BACKER_NOTCH, BACKER_X[1] + 1, FLEX_Y[0] - 1.5, FLEX_Y[1] + 1.5, z0 - 1, z0 + BACKER_T + 1)   # room for the flex to rise
     plate -= box(BACKER_X[0] - 1, BACKER_X[1] + 1, FLEX_Y[0] - 1, FLEX_Y[1] + 1, z0 - 1, z0 + 0.5)   # clear of the flex strip
     return plate
 
