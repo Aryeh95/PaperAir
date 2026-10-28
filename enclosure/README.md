@@ -68,7 +68,7 @@ If anything is off, tell me what you see, or change the measurement constants at
 
 | Qty | Part |
 |---|---|
-| 4 | M2 × 6 screws, thread-forming ("PT") or plain M2 (they cut their own thread in the printed holes) |
+| 4 | M2 × 6 screws, thread-forming ("PT") or plain M2 (they cut their own thread in the printed holes). The bottom-right one has no counterbore; its head stands proud. |
 | 4 | 10 mm round rubber feet, 2 mm thick |
 | — | Double-sided foam tape: 2 mm for a strip down the back of the board (it compresses to 1.7), 1 mm for the SFA40 board and the breakout |
 | 1 | FPC cable, 12-way 0.5 mm, 150 mm, the same as for the stand, plus the breakout and capacitor (see Wiring) |

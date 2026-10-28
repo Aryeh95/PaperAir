@@ -114,7 +114,7 @@ SFA_RECESS = 0.6                     # a shallow pocket in the wall locates it; 
 # --- Screws: 4 x M2 x 6 (thread-forming / PT, or plain M2 into the printed hole) ---
 SCREW_PILOT = 1.7
 SCREW_CLEAR = 2.4
-SCREWS = [(X0 + 2.5, Y0 + 2.3), (X1 - 2.5, Y0 + 2.3), (X0 + 2.5, GLASS_H - 1.5), (X1 - 2.5, GLASS_H - 0.5)]
+SCREWS = [(X0 + 2.5, Y0 + 2.3), (X1 - 2.5, Y0 + 2.3), (X0 + 2.5, GLASS_H - 1.5), (X1 - 2.6, GLASS_H + 1.3)]   # the last one clears the board's power-switch tab
 COLUMN_R = 2.3
 
 # --- Built-in buttons: a finger in the wall's outer skin, fixed at both ends, with slits above and
@@ -222,8 +222,16 @@ def build_bezel():
     bez -= box(X0 + WALL, X1 - 2.8, -CLEAR_Y, GLASS_H + CLEAR_Y, LIP, ZS + 1)
     # Corner columns for the screws that hold the back on
     cols = [zcyl(x, y, LIP, ZS, COLUMN_R) for x, y in SCREWS]
-    bez += union(cols)
+    bez += union(cols) ^ outline(LIP, ZS)
     bez -= box(-CLEAR, GLASS_W + CLEAR, -CLEAR_Y, GLASS_H + CLEAR_Y, LIP, ZS + 1)   # keep the pocket clear
+    # and the board's end, whose tabs reach past the glass into the corner columns
+    yb = BOARD_TOP + BOARD_W
+    xr = BOARD_END - TAB_OUT                             # the recessed edge
+    xp = xr + PWR_TAB_OUT                                # the power-switch tab's edge
+    y_usb = BOARD_TOP + TAB_W                            # where the USB-C tab's step meets the recess
+    y_pwr = yb - PWR_TAB_W                               # where the power tab's step meets the recess
+    bez -= box(GLASS_W, BOARD_END + 0.3, BOARD_TOP - 0.3, y_usb - TAB_STEP + 0.3, LIP + GLASS_T, ZS + 1)
+    bez -= box(GLASS_W, xp + 0.3, y_pwr + PWR_TAB_STEP - 0.3, yb + 0.3, LIP + GLASS_T, ZS + 1)
     # The nubs locate the board, across and along; the end wall is the backstop
     bez -= box(NUBS_X[0] - NUB_FIT, NUBS_X[1] + NUB_FIT, -NUB_OUT - 0.2, GLASS_H + NUB_OUT + 0.2, LIP, ZS + 1)
     # Stops at the glass's four corners, so it can't slide along X. At the right-hand end they are
@@ -233,13 +241,8 @@ def build_bezel():
     # Short at the right-hand end: the USB-C socket is 2.5 mm from the top edge
     for y0, y1 in ((-CLEAR_Y, 1.5), (GLASS_H - 1.5, GLASS_H + CLEAR_Y)):
         bez += box(GLASS_W + CLEAR, GLASS_W + 1.5, y0, y1, LIP - 0.01, LIP + GLASS_T - 0.1)
-    # The end wall follows the board's end: the tab at the USB-C corner reaches the wall, and below it
-    # the wall comes in by TAB_OUT, with the tab's 45 degree step. 0.3 mm clearance.
-    yb = BOARD_TOP + BOARD_W
-    xr = BOARD_END - TAB_OUT                             # the recessed edge
-    xp = xr + PWR_TAB_OUT                                # the power-switch tab's edge
-    y_usb = BOARD_TOP + TAB_W                            # where the USB-C tab's step meets the recess
-    y_pwr = yb - PWR_TAB_W                               # where the power tab's step meets the recess
+    # The end wall follows the board's end: the USB-C tab reaches it; at the recess and the power-switch
+    # tab it comes in to meet them, 0.3 mm off, with the two 45 degree steps
     wall = CrossSection([[[xr + 0.3, y_usb + 0.3], [BOARD_END + 0.5, y_usb - TAB_STEP + 0.3],
                           [BOARD_END + 0.5, Y1 + 1], [xp + 0.3, Y1 + 1],
                           [xp + 0.3, y_pwr + PWR_TAB_STEP - 0.3], [xr + 0.3, y_pwr - 0.3]]])
@@ -323,9 +326,10 @@ def build_back():
     # and the foot stays open behind the rest of it.
     back += foot_outer() ^ box(STRIP_X0, X1, 20.0, Y1 + 30, ZS, ZS + WALL)
     # Screw holes, counterbored for the heads
-    for x, y in SCREWS:
+    for i, (x, y) in enumerate(SCREWS):
         back -= zcyl(x, y, ZS - 1, T_THIN + 1, SCREW_CLEAR / 2)
-        back -= zcyl(x, y, T_THIN - 1.2, T_THIN + 1, 2.1)
+        if i != 3:   # the bottom-right one sits too near the corner for a counterbore; its head stands proud
+            back -= zcyl(x, y, T_THIN - 1.2, T_THIN + 1, 2.1)
     # SEN66: inlet (datasheet u 3.2-10.2) at its left end, fan outlet (20.5 mm circle at u 42.4)
     x0, x1, y0, y1, z0, z1 = sensor_box()
     back -= grille([x0 + 3.2 + 1.0, x0 + 6.7, x0 + 10.2 - 1.0], y0 + 2.8, y1 - 2.8)
