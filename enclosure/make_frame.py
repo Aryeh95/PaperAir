@@ -55,7 +55,8 @@ BOARD_W = 61.15                      # across, without the nubs; centred on the 
 BOARD_TOP = (GLASS_H - BOARD_W) / 2
 # Board edge features, in this orientation (buttons on top), from the board's end and top edge
 KEYS_X = (BOARD_END - 42.3, BOARD_END - 30.3)   # G4, G3 centres along the top edge (fit test v9)
-KEY_TIP_Y = -1.0                     # how far the button actuators reach above the glass edge
+ACTUATOR = 1.5                       # all three switch actuators stick out this far past the board's edge (calipers)
+KEY_TIP_Y = BOARD_TOP - ACTUATOR     # the button actuators' tips
 KEY_Z = 2.4                          # their centre, measured from the front face (fit test v7)
 USB_Y, USB_Z = BOARD_TOP + 6.73, 3.4   # USB-C centre on the right end (fit test v9)
 USB_TIP_X = BOARD_END + 2.05         # its socket stands out past the tab
@@ -65,7 +66,7 @@ PWR_Y, PWR_Z = BOARD_TOP + BOARD_W - 7.1, KEY_Z   # power switch centre on the r
 # wall; the power switch sits on the other tab.
 TAB_W, TAB_OUT, TAB_STEP = 15.0, 4.0, 3.0            # USB-C corner: width, proud of the recess, step
 PWR_TAB_W, PWR_TAB_OUT, PWR_TAB_STEP = 15.0, 3.0, 4.0   # power-switch corner
-PWR_TIP_X = BOARD_END - TAB_OUT + PWR_TAB_OUT - 0.6   # the switch's actuator, on its tab
+PWR_TIP_X = BOARD_END - TAB_OUT + PWR_TAB_OUT + ACTUATOR   # the power switch's actuator tip, past its tab
 NUBS_X = (BOARD_END - 8.56, BOARD_END - 6.84)   # two nubs, one on each long edge, near the right end (drawing: 6.84 from the end, 1.72 long)
 NUB_FIT = 1.0                        # clearance at each end of a nub's recess (the tab locates the board along the frame)
 CORNER_CHAMFER = 1.0
@@ -127,7 +128,7 @@ PAD = (3.0, 0.6)                     # the pad: length along the wall, how far i
 NUB_W = 1.6                          # the nub, along the wall: narrower than the 1.9 mm actuator
 NUB_Z = (2.0, 2.8)                   # across: its underside is flush with the finger's
 NUB_SHORT = 0.15                     # the nub stops this short of the actuator
-PWR_DISH = 2.0                       # the end wall is dished this deep around the power finger, so its nub stays short
+PWR_DISH = 0.0                       # the end wall could be dished around the power finger; with the actuator 1.5 mm proud it needn't be
 
 
 # ---------------------------------------------------------------------------------------------
@@ -206,8 +207,9 @@ def pwr_finger():
     along = lambda u0, u1, v0, v1, w0, w1: box(xo - v1, xo - v0, u0, u1, w0, w1)
     xw = BOARD_END - TAB_OUT + PWR_TAB_OUT + 0.3                  # the wall's inner face at the power tab
     cut, add = finger(along, xo - xw, xo - PWR_TIP_X, PWR_Y)
-    dish = box(xo, X1 + 1, PWR_Y - FINGER_L / 2 - 0.5, PWR_Y + FINGER_L / 2 + 0.5, LIP - 0.01, ZS + 1)
-    return cut + dish, add
+    if PWR_DISH > 0:
+        cut += box(xo, X1 + 1, PWR_Y - FINGER_L / 2 - 0.5, PWR_Y + FINGER_L / 2 + 0.5, LIP - 0.01, ZS + 1)
+    return cut, add
 
 
 def build_bezel():
@@ -243,8 +245,8 @@ def build_bezel():
                           [xp + 0.3, y_pwr + PWR_TAB_STEP - 0.3], [xr + 0.3, y_pwr - 0.3]]])
     bez += prism(wall, LIP, ZS) ^ outline(LIP, ZS)
     # and fills the chamfer at the power-switch corner
-    c = CORNER_CHAMFER - 0.2
-    tri = CrossSection([[[xp + 1, yb - c], [xp + 1, yb + 1], [xp - c - 1, yb + 1]]])
+    c = CORNER_CHAMFER - 0.28                            # 0.2 mm off the 45 degree face
+    tri = CrossSection([[[xp + 1, yb - c], [xp + 1, yb + 1], [xp - c, yb + 1]]])
     bez += prism(tri, LIP + GLASS_T, ZS) ^ box(GLASS_W + CLEAR, X1 - 1.0, 0, GLASS_H + CLEAR_Y, LIP + GLASS_T, ZS)
     bez -= union([zcyl(x, y, ZS - 5.5, ZS + 1, SCREW_PILOT / 2) for x, y in SCREWS])
     # Buttons on top, power on the right end, USB-C on the right end
