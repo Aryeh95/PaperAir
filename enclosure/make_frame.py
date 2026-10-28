@@ -66,15 +66,17 @@ FPC_EXIT = (BOARD_X0, 7.0, 16.0)     # FPC-I2S cable leaves from under the board
 FLEX_Y = (9.0, 16.0)                 # the panel's own flex strip runs along its back, tab to board
 
 # --- Backing plate: the panel is flexible, so a flat plate behind it (left of the board) keeps it
-# flat against the lip. Its top and bottom edges clip into grooves in the bezel. ---
+# flat against the lip. It drops into the pocket; two ribs on the back hold it there. ---
 BACKER_T = 1.2
 BACKER_X = (4.0, BOARD_X0 - 1.5)     # clear of the flex stub's bond on the glass, and of the board's connectors
-GROOVE = 0.6
+BACKER_RIBS_X = (12.0, 46.0)         # the ribs' centres along the frame; they reach forward from the back plate
 
 # --- Frame ---
 LIP = 1.0                            # thickness of the printed lip in front of the glass
-CLEAR = 0.25                         # around the glass in its pocket
-WINDOW_MARGIN = -0.3                 # the lip overlaps the picture by 0.3 mm (3 pixels), so no border shows with the glass's play
+CLEAR = 0.25                         # at each end of the glass in its pocket (fit test v9: no play to speak of)
+CLEAR_Y = 0.15                       # above and below it (fit test v10: 0.25 left a little play)
+WINDOW_MARGIN = -0.3                 # the lip overlaps the picture at each end by 0.3 mm (3 pixels)
+WINDOW_MARGIN_Y = -0.5               # and top and bottom by 0.5 mm (fit test v10: 0.3 still showed the border)
 CHAMFER = 0.4                        # the lip's front edge, so the window doesn't shadow the picture
 X0, X1 = -STUB - 0.6 - 1.6, BOARD_END + 3.2   # outer: the flex stub lies flat past the glass on the left, USB-C on the right
 STOP = 4.0                           # stops at the glass's corners hold it in place along X; the flex
@@ -196,28 +198,24 @@ def build_bezel():
     bez = outline(0, ZS)
     # The window, and behind it the pocket for the glass and board
     wx0, wx1 = ACTIVE_X - WINDOW_MARGIN, ACTIVE_X + ACTIVE_W + WINDOW_MARGIN
-    wy0, wy1 = ACTIVE_Y - WINDOW_MARGIN, ACTIVE_Y + ACTIVE_H + WINDOW_MARGIN
+    wy0, wy1 = ACTIVE_Y - WINDOW_MARGIN_Y, ACTIVE_Y + ACTIVE_H + WINDOW_MARGIN_Y
     bez -= Manifold.batch_hull([box(wx0 - CHAMFER, wx1 + CHAMFER, wy0 - CHAMFER, wy1 + CHAMFER, -1, 0),
                                 box(wx0, wx1, wy0, wy1, CHAMFER, LIP + 0.01)])
-    bez -= box(X0 + WALL, X1 - 2.8, -CLEAR, GLASS_H + CLEAR, LIP, ZS + 1)
+    bez -= box(X0 + WALL, X1 - 2.8, -CLEAR_Y, GLASS_H + CLEAR_Y, LIP, ZS + 1)
     # Corner columns for the screws that hold the back on
     cols = [zcyl(x, y, LIP, ZS, COLUMN_R) for x, y in SCREWS]
     bez += union(cols)
-    bez -= box(-CLEAR, GLASS_W + CLEAR, -CLEAR, GLASS_H + CLEAR, LIP, ZS + 1)   # keep the pocket clear
+    bez -= box(-CLEAR, GLASS_W + CLEAR, -CLEAR_Y, GLASS_H + CLEAR_Y, LIP, ZS + 1)   # keep the pocket clear
     # The nubs locate the board across; their recesses are long, since the end wall locates it along
     bez -= box(NUBS_X[0] - 1.0, NUBS_X[1] + 1.0, -NUB_OUT - 0.2, GLASS_H + NUB_OUT + 0.2, LIP, ZS + 1)
     # Stops at the glass's four corners, so it can't slide along X. At the right-hand end they are
     # only as thick as the glass, in front of the board.
-    for y0, y1 in ((-CLEAR, STOP), (GLASS_H - STOP, GLASS_H + CLEAR)):
+    for y0, y1 in ((-CLEAR_Y, STOP), (GLASS_H - STOP, GLASS_H + CLEAR_Y)):
         bez += box(X0 + WALL - 0.1, -CLEAR, y0, y1, LIP - 0.01, ZS)
     # Short at the right-hand end: the USB-C socket is 2.5 mm from the top edge
-    for y0, y1 in ((-CLEAR, 1.5), (GLASS_H - 1.5, GLASS_H + CLEAR)):
+    for y0, y1 in ((-CLEAR_Y, 1.5), (GLASS_H - 1.5, GLASS_H + CLEAR_Y)):
         bez += box(GLASS_W + CLEAR, GLASS_W + 1.5, y0, y1, LIP - 0.01, LIP + GLASS_T - 0.1)
     bez -= union([zcyl(x, y, ZS - 5.5, ZS + 1, SCREW_PILOT / 2) for x, y in SCREWS])
-    # Grooves for the backing plate's edges
-    zb0 = LIP + GLASS_T
-    for y0, y1 in ((-CLEAR - GROOVE, -CLEAR + 0.01), (GLASS_H + CLEAR - 0.01, GLASS_H + CLEAR + GROOVE)):
-        bez -= box(BACKER_X[0] - 0.5, BACKER_X[1] + 0.5, y0, y1, zb0 - 0.05, zb0 + BACKER_T + 0.3)
     # Buttons on top, power on the right end, USB-C on the right end
     bez -= union([key_cap_cut(x) for x in KEYS_X])
     bez -= pwr_cap_cut()
@@ -322,6 +320,12 @@ def build_back():
     back -= grille([sx0 + 4 + 2.8 * k for k in range(4)], sy0 + 3, sy1 - 3, 1.5)
     # The USB-C opening reaches into the back plate
     back -= usb_cut()
+    # Two ribs reach forward from the plate to hold the backing plate against the panel, with a
+    # 45 degree underside so they print standing up
+    zb = LIP + GLASS_T + 0.05 + BACKER_T + 0.15
+    for x in BACKER_RIBS_X:
+        back += Manifold.batch_hull([box(x - 1, x + 1, 9.0, PLATE_Y() - 1.0, ZS - 0.01, ZS + 0.5),
+                                     box(x - 1, x + 1, 9.0, PLATE_Y() - 1.0 - (ZS - zb), zb, zb + 0.01)])
     # Level with the desk, and recesses for 10 mm rubber feet (2 mm thick, they stand 0.6 mm proud)
     w = world(back) ^ box(-1000, 1000, -1000, 1000, 0, 1000)
     for fx in (FOOT_X0 + 8, FOOT_X1 - 8):
@@ -356,13 +360,10 @@ def build_caps():
 
 
 def build_backer():
-    """In place behind the glass; printed flat (front face down)."""
+    """In place behind the glass; printed flat (front face down). It drops into the pocket with
+    0.1 mm to spare each side; the back's ribs hold it against the panel."""
     z0 = LIP + GLASS_T + 0.05
-    # Its edges reach 0.3 mm into the grooves, with a bevel on the side that goes in first, so it
-    # flexes past the pocket's edge and clicks in.
-    y0, y1 = -CLEAR - 0.3, GLASS_H + CLEAR + 0.3
-    plate = Manifold.batch_hull([box(BACKER_X[0], BACKER_X[1], y0 + 0.5, y1 - 0.5, z0, z0 + 0.01),
-                                 box(BACKER_X[0], BACKER_X[1], y0, y1, z0 + 0.5, z0 + BACKER_T)])
+    plate = box(BACKER_X[0], BACKER_X[1], -CLEAR_Y + 0.1, GLASS_H + CLEAR_Y - 0.1, z0, z0 + BACKER_T)
     plate -= box(BACKER_X[0] - 1, BACKER_X[1] + 1, FLEX_Y[0] - 1, FLEX_Y[1] + 1, z0 - 1, z0 + 0.5)   # clear of the flex strip
     return plate
 

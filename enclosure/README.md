@@ -14,8 +14,8 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 ![The slim frame: front, back, with the back removed, and a section through the SEN66](render_frame.png)
 
 - **Screen:** the panel sits behind a printed lip with no acrylic. The lip overlaps the picture by
-  0.3 mm (3 pixels, inside the screen's own margin), so none of the panel's black border shows.
-  Small stops at the corners hold the glass in place.
+  0.5 mm top and bottom and 0.3 mm at the ends (inside the screen's own margin), so none of the
+  panel's black border shows. Small stops at the corners hold the glass in place.
 - **Board:** sits behind the right-hand end of the glass and reaches 4.5 mm past it. Its end rests
   against the right-hand wall, and its two nubs sit in recesses that locate it across.
   - **Buttons:** G4 and G3 come through the top edge under two printed caps.
@@ -39,7 +39,7 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 | `stl/frame_bezel.stl` | Face down, as exported | No supports |
 | `stl/frame_back.stl` | Standing on its bottom face, as exported | No supports. The bottom face is the flat one that sits on the desk; the split face is vertical. Nothing overhangs more than 45°. |
 | `stl/frame_caps.stl` | Standing on end, as exported, with a brim | Three caps, 5 mm tall. Two are for the top buttons; the one with the longer ridge is for the power switch. No overhangs. |
-| `stl/frame_backer.stl` | Flat, as exported | Backing plate. The panel is flexible, so this holds it flat against the lip. |
+| `stl/frame_backer.stl` | Flat, as exported | Backing plate. The panel is flexible, so this holds it flat against the lip. It drops in; two ribs on the back hold it. |
 
 ### Fit test
 
@@ -48,10 +48,11 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 Drop the plugged-together panel and board into it, face down, then check:
 
 1. **Pocket:** the glass drops in without forcing, with its left end between the two stops, and
-   doesn't rattle. Near the right end, the board has a small nub on each long edge. Each nub sits in
-   its own recess, and the board's end touches the right-hand wall.
+   doesn't move. It has 0.25 mm to spare at each end and 0.15 above and below. Near the right end,
+   the board has a small nub on each long edge. Each nub sits in its own recess, and the board's end
+   touches the right-hand wall.
 2. **Lip:** from the front, the lip covers the glass edge on all four sides but none of the
-   picture beyond its outermost 3 pixels. Press G3 to flash the screen black and look at the
+   picture beyond its outermost 5 pixels. Press G3 to flash the screen black and look at the
    edges. The picture is 4 mm from the glass's flex end and 1.5 mm from its board end, so the lip
    is wider on the left.
 3. **Buttons:** put the caps in from the inside. Each should click its switch with a light press,
@@ -77,9 +78,9 @@ If anything is off, tell me what you see, or change the measurement constants at
 1. Put the three caps into their openings from the inside.
 2. Lay the panel face down in the bezel, with the board on the right-hand end. Plug the FPC cable
    into the board's FPC-I2S socket and the battery into its socket.
-3. Clip the backing plate in behind the panel, left of the board, bevelled side first. Seat one
-   long edge in its groove, bow the plate slightly, and press the other edge down until it clicks
-   in. Its shallow channel goes over the panel's flex strip.
+3. Drop the backing plate in behind the panel, left of the board, with its shallow channel over
+   the panel's flex strip. It's loose until the back goes on; two ribs on the back then hold it
+   against the panel.
 4. Foam tape on the back of the board, 2 mm, in an L: a strip along its top edge and one down its
    right-hand end, on the tallest parts there (that's what the 4.7 mm stack was measured over). The
    back plate compresses it to 1.7 mm, which holds the board against the glass. Push the board's end
@@ -112,7 +113,8 @@ checked against fit-test prints:
   measured from that end
 - the two nubs on the board's long edges. They make it 64.2 mm across, against 62 mm for the glass
   (`NUBS_X`, `NUB_OUT`).
-- the panel thickness, 1.2 mm. The backing plate's grooves are set from it (`GLASS_T`).
+- the panel thickness, 1.2 mm. The backing plate and the ribs that hold it are set from it
+  (`GLASS_T`).
 
 From calipers and the fit tests:
 - the glass, 110.5 × 62 mm (the drawing says 62.5; if yours is, `GLASS_H` in `make_frame.py`)
