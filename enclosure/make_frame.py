@@ -60,7 +60,8 @@ USB_Y, USB_Z = BOARD_TOP + 6.73, 3.4   # USB-C centre on the right end (fit test
 USB_TIP_X = BOARD_END + 2.05         # its socket stands out past the board
 PWR_Y, PWR_Z = BOARD_TOP + BOARD_W - 7.1, KEY_Z   # power switch centre on the right end (fit test v7)
 PWR_TIP_X = BOARD_END - 0.6
-NUBS_X = (BOARD_END - 8.4, BOARD_END - 5.4)   # two nubs, one on each long edge, near the right end
+NUBS_X = (BOARD_END - 8.56, BOARD_END - 6.84)   # two nubs, one on each long edge, near the right end (drawing: 6.84 from the end, 1.72 long)
+NUB_FIT = 0.15                       # clearance at each end of a nub's recess: the nubs locate the board along the frame
 NUB_OUT = (64.2 - GLASS_H) / 2       # how far they reach beyond the glass: 64.2 mm across both
 FPC_EXIT = (BOARD_X0, 7.0, 16.0)     # FPC-I2S cable leaves from under the board's inner edge, Y range
 FLEX_Y = (9.0, 16.0)                 # the panel's own flex strip runs along its back, tab to board
@@ -206,8 +207,8 @@ def build_bezel():
     cols = [zcyl(x, y, LIP, ZS, COLUMN_R) for x, y in SCREWS]
     bez += union(cols)
     bez -= box(-CLEAR, GLASS_W + CLEAR, -CLEAR_Y, GLASS_H + CLEAR_Y, LIP, ZS + 1)   # keep the pocket clear
-    # The nubs locate the board across; their recesses are long, since the end wall locates it along
-    bez -= box(NUBS_X[0] - 1.0, NUBS_X[1] + 1.0, -NUB_OUT - 0.2, GLASS_H + NUB_OUT + 0.2, LIP, ZS + 1)
+    # The nubs locate the board, across and along; the end wall is the backstop
+    bez -= box(NUBS_X[0] - NUB_FIT, NUBS_X[1] + NUB_FIT, -NUB_OUT - 0.2, GLASS_H + NUB_OUT + 0.2, LIP, ZS + 1)
     # Stops at the glass's four corners, so it can't slide along X. At the right-hand end they are
     # only as thick as the glass, in front of the board.
     for y0, y1 in ((-CLEAR_Y, STOP), (GLASS_H - STOP, GLASS_H + CLEAR_Y)):
