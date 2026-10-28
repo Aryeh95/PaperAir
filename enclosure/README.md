@@ -18,9 +18,9 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
   panel's black border shows. Small stops at the corners hold the glass in place.
 - **Board:** sits behind the right-hand end of the glass and reaches 4.5 mm past it. Its end rests
   against the right-hand wall, and its two nubs sit in recesses that locate it across.
-  - **Buttons:** G4 and G3 are pressed through two fingers cut into the top wall, each fixed at
-    one end with a pad outside and a nub inside. No loose parts.
-  - **Power switch:** the same, in the right-hand wall.
+  - **Buttons:** G4 and G3 are pressed through two fingers in the top wall's outer skin, each fixed
+    at both ends, with a pad outside and a nub inside. No loose parts.
+  - **Power switch:** the same, in a shallow dish in the right-hand wall.
   - **USB-C:** opening on the right end, near the top.
 - **Foot:** at the bottom-back, 28.5 mm deep, with a 45° shoulder up to the back plate. It holds:
   - **SEN66:** behind the left half of the glass, breathing through two grilles in the back.
@@ -114,9 +114,9 @@ checked against fit-test prints:
   measured from that end
 - the two nubs on the board's long edges. They make it 64.2 mm across, against 62 mm for the glass
   (`NUBS_X`, `NUB_OUT`).
-- the board's end: a 15 mm tab at the USB-C corner stands 4 mm proud of the rest, with a 45° step
-  (calipers). The tab is what rests against the end wall; the power switch is on the recessed part
-  (`TAB_W`, `TAB_OUT`, `TAB_STEP`).
+- the board's end: a tab at each corner stands proud of a recess between them, with 45° steps
+  (calipers). The USB-C tab is 15 wide and 4 proud; the power-switch tab 15 wide and 3 proud. The
+  USB-C tab is what rests against the end wall (`TAB_*`, `PWR_TAB_*`).
 - the panel thickness, 1.2 mm. The backing plate and the ribs that hold it are set from it
   (`GLASS_T`).
 

@@ -60,11 +60,12 @@ KEY_Z = 2.4                          # their centre, measured from the front fac
 USB_Y, USB_Z = BOARD_TOP + 6.73, 3.4   # USB-C centre on the right end (fit test v9)
 USB_TIP_X = BOARD_END + 2.05         # its socket stands out past the tab
 PWR_Y, PWR_Z = BOARD_TOP + BOARD_W - 7.1, KEY_Z   # power switch centre on the right end (fit test v7)
-# The board's end is not straight: a tab 15 mm wide at the USB-C corner stands 4 mm proud of the rest
-# of the end edge, with a 45 degree step (calipers). The power switch is on the recessed part, and the
-# corner there is chamfered.
-TAB_W, TAB_OUT, TAB_STEP = 15.0, 4.0, 3.0
-PWR_TIP_X = BOARD_END - TAB_OUT - 0.6   # on the recessed part of the end
+# The board's end is not straight: a tab at each corner stands proud of a recess between them, each
+# joined to the recess by a 45 degree step (calipers). The USB-C tab is what rests against the end
+# wall; the power switch sits on the other tab.
+TAB_W, TAB_OUT, TAB_STEP = 15.0, 4.0, 3.0            # USB-C corner: width, proud of the recess, step
+PWR_TAB_W, PWR_TAB_OUT, PWR_TAB_STEP = 15.0, 3.0, 4.0   # power-switch corner
+PWR_TIP_X = BOARD_END - TAB_OUT + PWR_TAB_OUT - 0.6   # the switch's actuator, on its tab
 NUBS_X = (BOARD_END - 8.56, BOARD_END - 6.84)   # two nubs, one on each long edge, near the right end (drawing: 6.84 from the end, 1.72 long)
 NUB_FIT = 1.0                        # clearance at each end of a nub's recess (the tab locates the board along the frame)
 CORNER_CHAMFER = 1.0
@@ -115,15 +116,18 @@ SCREW_CLEAR = 2.4
 SCREWS = [(X0 + 2.5, Y0 + 2.3), (X1 - 2.5, Y0 + 2.3), (X0 + 2.5, GLASS_H - 1.5), (X1 - 2.5, GLASS_H - 0.5)]
 COLUMN_R = 2.3
 
-# --- Built-in buttons: a finger cut into the wall, fixed at one end, free on the other three sides.
-# A pad on its outer face is what you press; a nub on its inner face reaches the switch. ---
-FINGER_L = 10.0                      # along the wall, root to free end
-FINGER_Z = (1.8, 4.8)                # across the wall's height; the switches are at Z 2.4
-FINGER_T = 1.0                       # thick; it's the outer skin of the wall
-SLIT = 0.6                           # around the free sides; prints as a gap
-PAD_PROUD = 0.6                      # how far the pad stands out of the wall
-NUB_W = 1.6                          # along the wall, centred on the switch: narrower than the actuator, so it can't land on the switch body
-NUB_Z = (1.9, 3.4)                   # across; a 45 degree underside, so it prints
+# --- Built-in buttons: a finger in the wall's outer skin, fixed at both ends, with slits above and
+# below it. A pad on its outer face is what you press; a nub on its inner face reaches the switch.
+# Fixed at both ends, its first layer prints as a bridge, so it needs no support. ---
+FINGER_L = 9.0                       # along the wall, between its two roots
+FINGER_Z = (2.0, 4.0)                # across the wall's height; the switch actuators are at Z 2.0 to 2.8
+FINGER_T = 0.8                       # thick
+SLIT = 0.6                           # above and below it
+PAD = (3.0, 0.6)                     # the pad: length along the wall, how far it stands proud
+NUB_W = 1.6                          # the nub, along the wall: narrower than the 1.9 mm actuator
+NUB_Z = (2.0, 2.8)                   # across: its underside is flush with the finger's
+NUB_SHORT = 0.15                     # the nub stops this short of the actuator
+PWR_DISH = 2.0                       # the end wall is dished this deep around the power finger, so its nub stays short
 
 
 # ---------------------------------------------------------------------------------------------
@@ -175,41 +179,35 @@ def outline(z0, z1):
     return prism(rr(X0, X1, Y0, Y1, RADIUS), z0, z1)
 
 
-def finger(along, across, outer, inward, tip, root_side, nub_c, pad_c):
-    """One built-in button. Returns (cut, add). `along` maps a coordinate along the wall to (x, y)
-    etc: it's a function u, v, w -> box in frame coordinates, where u runs along the wall, v from
-    the wall's outer face inward (0 at the outer face), w across the wall's height (Z).
-    root_side is -1 or +1: which end along the wall the finger is fixed at.
-    nub_c, pad_c: centres along the wall of the nub (the switch) and the pad."""
+def finger(along, inward, tip, c):
+    """One built-in button, centred on the switch at c along the wall. Returns (cut, add).
+    `along(u0, u1, v0, v1, w0, w1)` makes a box in frame coordinates from u along the wall, v from
+    the wall's outer face inward, and w across its height (Z)."""
     z0, z1 = FINGER_Z
-    u0, u1 = (nub_c - 7.0, nub_c - 7.0 + FINGER_L) if root_side < 0 else (nub_c + 7.0 - FINGER_L, nub_c + 7.0)
-    # the window: through the whole wall thickness to the pocket, around the finger and behind it,
-    # leaving the root end attached
-    win_u0, win_u1 = (u0, u1 + SLIT) if root_side < 0 else (u0 - SLIT, u1)
-    cut = along(win_u0, win_u1, -1.0, inward + 0.01, z0 - SLIT, z1 + SLIT)
-    keep = along(u0, u1, -1.0, FINGER_T, z0, z1)            # the finger itself, at the outer face
-    cut = cut - keep
-    # the nub, from the finger's inner face to 0.15 short of the switch, with a 45 degree underside
-    nz0, nz1 = NUB_Z
-    reach = tip - FINGER_T
-    nub = Manifold.batch_hull([along(nub_c - NUB_W / 2, nub_c + NUB_W / 2, FINGER_T - 0.01, FINGER_T, nz0, nz1),
-                               along(nub_c - NUB_W / 2, nub_c + NUB_W / 2, FINGER_T - 0.01, tip, min(nz0 + reach, nz1 - 0.2), nz1)])
-    # the pad outside, over the nub, with a 45 degree underside too
-    pad = Manifold.batch_hull([along(pad_c - 2.25, pad_c + 2.25, -0.01, 0.0, z0, z1),
-                               along(pad_c - 2.25, pad_c + 2.25, -PAD_PROUD, 0.0, z0 + PAD_PROUD, z1)])
+    u0, u1 = c - FINGER_L / 2, c + FINGER_L / 2
+    # the window: through the wall to the pocket, with the slits above and below the finger
+    cut = along(u0, u1, -1.0, inward + 0.01, z0 - SLIT, z1 + SLIT)
+    cut -= along(u0 - 1, u1 + 1, -1.0, FINGER_T, z0, z1)          # the finger, in the outer skin
+    nub = along(c - NUB_W / 2, c + NUB_W / 2, FINGER_T - 0.01, tip - NUB_SHORT, NUB_Z[0], NUB_Z[1])
+    pad = Manifold.batch_hull([along(c - PAD[0] / 2, c + PAD[0] / 2, -0.01, 0.0, z0, z1),
+                               along(c - PAD[0] / 2, c + PAD[0] / 2, -PAD[1], 0.0, z0 + PAD[1], z1)])
     return cut, nub + pad
 
 
 def key_finger(x):
-    """Top wall: u = x, v from the outer face at Y0 inward (+y), w = z. Fixed at its left end."""
+    """Top wall: u = x, v from the outer face at Y0 inward (+y), w = z."""
     along = lambda u0, u1, v0, v1, w0, w1: box(u0, u1, Y0 + v0, Y0 + v1, w0, w1)
-    return finger(along, None, Y0, -CLEAR_Y - Y0, (KEY_TIP_Y - 0.15) - Y0, -1, x, x + 0.5)
+    return finger(along, -CLEAR_Y - Y0, KEY_TIP_Y - Y0, x)
 
 
 def pwr_finger():
-    """Right wall: u = y, v from the outer face at X1 inward (-x), w = z. Fixed at its upper end."""
-    along = lambda u0, u1, v0, v1, w0, w1: box(X1 - v1, X1 - v0, u0, u1, w0, w1)
-    return finger(along, None, X1, X1 - (BOARD_END - TAB_OUT + 0.3), X1 - (PWR_TIP_X + 0.15), -1, PWR_Y, PWR_Y + 0.5)
+    """Right wall, dished PWR_DISH deep around it: u = y, v from the dish's floor inward (-x), w = z."""
+    xo = X1 - PWR_DISH
+    along = lambda u0, u1, v0, v1, w0, w1: box(xo - v1, xo - v0, u0, u1, w0, w1)
+    xw = BOARD_END - TAB_OUT + PWR_TAB_OUT + 0.3                  # the wall's inner face at the power tab
+    cut, add = finger(along, xo - xw, xo - PWR_TIP_X, PWR_Y)
+    dish = box(xo, X1 + 1, PWR_Y - FINGER_L / 2 - 0.5, PWR_Y + FINGER_L / 2 + 0.5, LIP - 0.01, ZS + 1)
+    return cut + dish, add
 
 
 def build_bezel():
@@ -236,14 +234,17 @@ def build_bezel():
     # The end wall follows the board's end: the tab at the USB-C corner reaches the wall, and below it
     # the wall comes in by TAB_OUT, with the tab's 45 degree step. 0.3 mm clearance.
     yb = BOARD_TOP + BOARD_W
-    y_step = BOARD_TOP + TAB_W                           # where the step reaches the recessed edge
     xr = BOARD_END - TAB_OUT                             # the recessed edge
-    wall = CrossSection([[[xr + 0.3, y_step + 0.3], [BOARD_END + 0.5, y_step - TAB_STEP + 0.3],
-                          [BOARD_END + 0.5, Y1 + 1], [xr + 0.3, Y1 + 1]]])
+    xp = xr + PWR_TAB_OUT                                # the power-switch tab's edge
+    y_usb = BOARD_TOP + TAB_W                            # where the USB-C tab's step meets the recess
+    y_pwr = yb - PWR_TAB_W                               # where the power tab's step meets the recess
+    wall = CrossSection([[[xr + 0.3, y_usb + 0.3], [BOARD_END + 0.5, y_usb - TAB_STEP + 0.3],
+                          [BOARD_END + 0.5, Y1 + 1], [xp + 0.3, Y1 + 1],
+                          [xp + 0.3, y_pwr + PWR_TAB_STEP - 0.3], [xr + 0.3, y_pwr - 0.3]]])
     bez += prism(wall, LIP, ZS) ^ outline(LIP, ZS)
     # and fills the chamfer at the power-switch corner
     c = CORNER_CHAMFER - 0.2
-    tri = CrossSection([[[xr + 1, yb - c], [xr + 1, yb + 1], [xr - c - 1, yb + 1]]])
+    tri = CrossSection([[[xp + 1, yb - c], [xp + 1, yb + 1], [xp - c - 1, yb + 1]]])
     bez += prism(tri, LIP + GLASS_T, ZS) ^ box(GLASS_W + CLEAR, X1 - 1.0, 0, GLASS_H + CLEAR_Y, LIP + GLASS_T, ZS)
     bez -= union([zcyl(x, y, ZS - 5.5, ZS + 1, SCREW_PILOT / 2) for x, y in SCREWS])
     # Buttons on top, power on the right end, USB-C on the right end
@@ -377,7 +378,7 @@ def build_backer():
 
 def build_fit_test(bezel):
     ring = bezel ^ box(-1000, 1000, -1000, 1000, -1, 2.4)
-    corner = bezel ^ (box(KEYS_X[0] - 8, 1000, -1000, 12, -1, 100) + box(X1 - 12, 1000, -1000, 1000, -1, 100))
+    corner = bezel ^ (box(KEYS_X[0] - 8, 1000, -1000, 12, -1, 100) + box(X1 - 16, 1000, -1000, 1000, -1, 100))
     return ring + corner
 
 
