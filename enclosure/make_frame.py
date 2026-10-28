@@ -57,12 +57,16 @@ KEYS_X = (BOARD_END - 42.3, BOARD_END - 30.3)   # G4, G3 centres along the top e
 KEY_TIP_Y = -1.0                     # how far the button actuators reach above the glass edge
 KEY_Z = 2.4                          # their centre, measured from the front face (fit test v7)
 USB_Y, USB_Z = BOARD_TOP + 6.73, 3.4   # USB-C centre on the right end (fit test v9)
-USB_TIP_X = BOARD_END + 2.05         # its socket stands out past the board
+USB_TIP_X = BOARD_END + 2.05         # its socket stands out past the tab
 PWR_Y, PWR_Z = BOARD_TOP + BOARD_W - 7.1, KEY_Z   # power switch centre on the right end (fit test v7)
-PWR_TIP_X = BOARD_END - 0.6
+PWR_TIP_X = BOARD_END - 3.0 - 0.6     # on the recessed part of the end
 NUBS_X = (BOARD_END - 8.56, BOARD_END - 6.84)   # two nubs, one on each long edge, near the right end (drawing: 6.84 from the end, 1.72 long)
-NUB_FIT = 0.15                       # clearance at each end of a nub's recess: the nubs locate the board along the frame
-CORNER_CHAMFER = 3.0                 # the board's corner at the power switch is cut off at 45 degrees (ruler photo)
+NUB_FIT = 1.0                        # clearance at each end of a nub's recess (the tab locates the board along the frame)
+# The board's end is not straight: a tab 15 mm wide at the USB-C corner stands 3 mm proud of the rest
+# of the end edge, with a 45 degree step (calipers). The power switch is on the recessed part, and the
+# corner there is chamfered.
+TAB_W, TAB_OUT, TAB_STEP = 15.0, 3.0, 3.0
+CORNER_CHAMFER = 1.0
 NUB_OUT = (64.2 - GLASS_H) / 2       # how far they reach beyond the glass: 64.2 mm across both
 FPC_EXIT = (BOARD_X0, 7.0, 16.0)     # FPC-I2S cable leaves from under the board's inner edge, Y range
 FLEX_Y = (9.0, 16.0)                 # the panel's own flex strip runs along its back, tab to board
@@ -218,10 +222,17 @@ def build_bezel():
     # Short at the right-hand end: the USB-C socket is 2.5 mm from the top edge
     for y0, y1 in ((-CLEAR_Y, 1.5), (GLASS_H - 1.5, GLASS_H + CLEAR_Y)):
         bez += box(GLASS_W + CLEAR, GLASS_W + 1.5, y0, y1, LIP - 0.01, LIP + GLASS_T - 0.1)
-    # Fill the board's chamfered corner at the power switch, so the corner column holds it there too
-    c = CORNER_CHAMFER - 0.2
+    # The end wall follows the board's end: the tab at the USB-C corner reaches the wall, and below it
+    # the wall comes in by TAB_OUT, with the tab's 45 degree step. 0.3 mm clearance.
     yb = BOARD_TOP + BOARD_W
-    tri = CrossSection([[[BOARD_END + 1, yb - c], [BOARD_END + 1, yb + 1], [BOARD_END - c - 1, yb + 1]]])
+    y_step = BOARD_TOP + TAB_W                           # where the step reaches the recessed edge
+    xr = BOARD_END - TAB_OUT                             # the recessed edge
+    wall = CrossSection([[[xr + 0.3, y_step + 0.3], [BOARD_END + 0.5, y_step - TAB_STEP + 0.3],
+                          [BOARD_END + 0.5, Y1 + 1], [xr + 0.3, Y1 + 1]]])
+    bez += prism(wall, LIP, ZS) ^ outline(LIP, ZS)
+    # and fills the chamfer at the power-switch corner
+    c = CORNER_CHAMFER - 0.2
+    tri = CrossSection([[[xr + 1, yb - c], [xr + 1, yb + 1], [xr - c - 1, yb + 1]]])
     bez += prism(tri, LIP + GLASS_T, ZS) ^ box(GLASS_W + CLEAR, X1 - 1.0, 0, GLASS_H + CLEAR_Y, LIP + GLASS_T, ZS)
     bez -= union([zcyl(x, y, ZS - 5.5, ZS + 1, SCREW_PILOT / 2) for x, y in SCREWS])
     # Buttons on top, power on the right end, USB-C on the right end

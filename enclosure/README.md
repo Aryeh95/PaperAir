@@ -113,6 +113,9 @@ checked against fit-test prints:
   measured from that end
 - the two nubs on the board's long edges. They make it 64.2 mm across, against 62 mm for the glass
   (`NUBS_X`, `NUB_OUT`).
+- the board's end: a 15 mm tab at the USB-C corner stands 3 mm proud of the rest, with a 45° step
+  (calipers). The tab is what rests against the end wall; the power switch is on the recessed part
+  (`TAB_W`, `TAB_OUT`, `TAB_STEP`).
 - the panel thickness, 1.2 mm. The backing plate and the ribs that hold it are set from it
   (`GLASS_T`).
 
