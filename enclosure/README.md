@@ -69,6 +69,8 @@ If anything is off, tell me what you see, or change the measurement constants at
 
 ### Assembly
 
+![Exploded view: bezel and caps, panel and board, backing plate and foam tape, then the sensors, battery and breakout inside the back](render_exploded.png)
+
 1. Put the three caps into their openings from the inside.
 2. Lay the panel face down in the bezel, with the board on the right-hand end. Plug the FPC cable
    into the board's FPC-I2S socket and the battery into its socket.
