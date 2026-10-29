@@ -9,7 +9,8 @@ cable can leave the case. Pass M5Stack's STL with --oem to cut it; nothing of th
 
 Parts:
   saddle.stl              one piece. Printed standing on its bottom face, as exported, no supports.
-  paperdiy_back_slot.stl  M5Stack's back plate with the slot (only with --oem). Printed as M5Stack's.
+  paperdiy_back_slot.stl  M5Stack's back plate with the slot and two countersunk screw holes (only
+                          with --oem). Printed as M5Stack's.
   paperdiy_bezel_lip.stl  M5Stack's bezel with its lip 2 mm wider all round (--lip), so the panel's
                           black border stays covered. Printed face down, as exported.
 
@@ -58,6 +59,12 @@ SEN_Z0 = CASE[2] + CLR + WALL + 3.0  # 3 mm in front of it for the cable and wir
 T_FOOT = SEN_Z0 + SEN[2] + 0.2 + WALL
 SFA = (17.3, 15.2, 3.6)              # SFA40 carrier board, 16.9 x 14.8 x 3.4 measured, plus clearance
 SFA_RECESS = 0.6
+
+# Two M2 screws hold the case to the saddle: countersunk, through the back plate from inside the
+# case (over the panel, where nothing is behind the plate), into heat-set inserts in bosses on the
+# saddle's face. M2 x 3 inserts (3.2 mm hole, 4.5 deep), M2 x 6 countersunk screws.
+SCREWS = ((22.0, 27.0), (45.0, 27.0))   # in case coordinates: left of the cable slot, above the foot
+INSERT_HOLE, INSERT_DEPTH, BOSS = 3.2, 4.5, 7.0
 
 X0, X1 = -CLR - WALL, CASE[0] + CLR + WALL
 Y1 = CASE[1] + CLR + FLOOR           # where the saddle's front-bottom edge meets the desk
@@ -148,6 +155,13 @@ def build():
     inner_upper = prism(rr(X0 + WALL, X1 - WALL, step_i - rise_i, step_i - rise_i + 0.5, 0.2), zf + WALL, zf + WALL + 0.01)
     inner = Manifold.batch_hull([inner_lower, inner_upper])
     s -= local(world(inner) ^ box(-1000, 1000, -1000, 1000, FLOOR, 1000))
+    # Bosses for the screw inserts, inside the cavity behind the face, with a 45 degree top so
+    # they print standing; the insert holes go in from the face
+    for x, y in SCREWS:
+        boss = Manifold.batch_hull([box(x - BOSS / 2, x + BOSS / 2, y - BOSS / 2, y + BOSS / 2, zf, zf + WALL + INSERT_DEPTH + 1.5),
+                                    box(x - BOSS / 2, x + BOSS / 2, y - BOSS / 2 - (WALL + INSERT_DEPTH + 1.5), y - BOSS / 2, zf, zf + 0.01)])
+        s += boss
+        s -= Manifold.cylinder(INSERT_DEPTH + 0.5, INSERT_HOLE / 2, circular_segments=SEG).translate([x, y, zf - 0.01])
     # The cable: a groove in the face behind the case, from the slot down, and an opening into the
     # cavity through the front wall
     s -= box(SLOT[0] - 1, SLOT[1] + 1, SLOT[2] - 1, step_i + 4, zf - 0.01, zf + GROOVE)
@@ -191,7 +205,13 @@ def oem_back_with_slot(path):
     m = Manifold(Mesh(vert_properties=np.asarray(back.vertices, np.float32), tri_verts=np.asarray(back.faces, np.uint32)))
     x0, x1 = SLOT[0] - OEM_OFFSET[0], SLOT[1] - OEM_OFFSET[0]
     y0, y1 = SLOT[2] - OEM_OFFSET[1], SLOT[3] - OEM_OFFSET[1]
-    return m - box(x0, x1, y0, y1, -20, 20)
+    m -= box(x0, x1, y0, y1, -20, 20)
+    # Screw holes with a 90 degree countersink on the inner face (the plate is z -6.5 to -5.3)
+    for x, y in SCREWS:
+        ox, oy = x - OEM_OFFSET[0], y - OEM_OFFSET[1]
+        m -= Manifold.cylinder(20, 1.15, circular_segments=SEG).translate([ox, oy, -10])
+        m -= Manifold.cylinder(1.3, 1.15, 2.45, circular_segments=SEG).translate([ox, oy, -6.6])
+    return m
 
 
 def oem_bezel_with_lip(path, extra):

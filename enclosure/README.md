@@ -27,7 +27,12 @@ underneath. 124 × 44 × 63 mm with the case in it.
 | M5Stack's three button caps | As M5Stack's | From [M5_Hardware](https://github.com/m5stack/M5_Hardware/tree/master/Products/K159-B_PaperDIY_Complete_Kit/Structures) (MIT licence, © M5Stack), unchanged |
 | M5Stack's bezel, with a wider lip | Face down | `make_saddle.py --oem` also writes `paperdiy_bezel_lip.stl`: the lip reaches 2 mm further in all round, so the panel's black border stays covered. 18 pixels of the picture's margin go under it; the layout keeps 40 clear. The stock bezel works too, with a thin line of border showing. |
 | M5Stack's back plate, with a slot | As M5Stack's | `python make_saddle.py --out stl --oem PaperDlY_Complete_Kit.stl` cuts an 11 × 12 mm slot over the board's I2S connector, so the FPC cable leaves straight out the back |
-| `stl/saddle.stl` | Standing on its bottom face, as exported | No supports |
+| `stl/saddle.stl` | Standing on its bottom face, as exported | No supports. Two bosses on its face take M2 × 3 heat-set inserts (3.2 mm holes). |
+
+**Fixing the case in:** two M2 × 6 countersunk screws go from inside the case through the back plate
+(the slotted one has the countersunk holes, over the panel, left of the cable slot) into the
+inserts. Press the inserts in with a soldering iron before assembly. Without them the case just
+stands in the saddle, held by its weight and the front lip.
 
 **Assembly:** plug the FPC cable into the I2S connector (the one at the board's inner edge, 5–15 mm
 from the buttons' edge) before closing M5Stack's case; the cable comes out through the slot. Stand
