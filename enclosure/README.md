@@ -20,6 +20,8 @@ behind, leaning the whole thing back 13°. The foot is the slim frame's foot: SE
 two grilles, SFA40 in a recess behind its own grille, breakout and battery beside them, rubber feet
 underneath. 124 × 44 × 63 mm with the case in it.
 
+![Exploded: the case front to back, and the saddle from behind with the foot's contents drawn out](render_saddle.png)
+
 | File | Print | Notes |
 |---|---|---|
 | M5Stack's bezel and three button caps | As M5Stack's | From [M5_Hardware](https://github.com/m5stack/M5_Hardware/tree/master/Products/K159-B_PaperDIY_Complete_Kit/Structures) (MIT licence, © M5Stack), unchanged |
