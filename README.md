@@ -87,6 +87,8 @@ the FPC wiring:
      like
    - an AirNow key and your ZIP code, used as the fallback
    - °F or °C, the 12/24-hour clock, the time zone, and a password for the web page
+   - a static IP address if you want one (DHCP otherwise), and whether to roam on a mesh
+     network (join the strongest access point, and move when the signal gets weak)
 
    Save, and the PaperDIY joins your network. Everything is kept in flash on the device, so a
    `git pull` and a new upload never touch it.

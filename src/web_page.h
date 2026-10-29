@@ -143,7 +143,7 @@ const pill=$("mood");pill.style.color=m[1];pill.lastElementChild.textContent=m[0
 const ai=$("aqi-in"),ao=$("aqi-out"),o=now.outdoor;ai.style.setProperty("--c",aqiColor(now.indoor_aqi>=0?now.indoor_aqi:null));ai.children[1].textContent=now.indoor_aqi>=0?now.indoor_aqi:"--";
 ao.style.setProperty("--c",aqiColor(o.ok?o.aqi:null));ao.children[1].textContent=o.ok?o.aqi:"--";ao.children[2].textContent=o.ok?o.category:"no reading";
 tiles();$("outside").innerHTML=o.ok?`<div class="outbig"><b style="color:${aqiColor(o.aqi)}">${o.aqi}</b><div><div class="cat">${o.category}</div><div class="muted">PM2.5 ${f(o.pm25,1)} µg/m³ · ${o.source||"outdoor sensor"}</div><div class="muted" style="font-size:13px">updated ${o.age}</div></div></div>`:'<span class="muted">No outdoor reading yet. Add a PurpleAir or AirNow key in Settings.</span>';
-const d=now.device;$("device").innerHTML=kv([["Wi-Fi",bars(d.rssi)+d.ssid+` <span class="muted">${d.rssi} dBm</span>`],["Address",d.ip],["Up for",d.uptime],["SEN66",d.sen66],["SFA40",d.sfa40],["Screen",d.page+" page"],["Free memory",d.heap],["Clock",now.time_valid?"synced":"not set"]]);$("ver").textContent="firmware "+d.version;chart()}
+const d=now.device;$("device").innerHTML=kv([["Wi-Fi",bars(d.rssi)+d.ssid+` <span class="muted">${d.rssi} dBm</span>`],["Address",d.ip+(d.static_ip?' <span class="muted">static</span>':"")],["Access point",d.bssid+` <span class="muted">ch ${d.channel}</span>`],["Up for",d.uptime],["SEN66",d.sen66],["SFA40",d.sfa40],["Screen",d.page+" page"],["Free memory",d.heap],["Clock",now.time_valid?"synced":"not set"]]);$("ver").textContent="firmware "+d.version;chart()}
 async function load(){try{const r=await fetch("/api/now",{cache:"no-store"});if(r.status==401){location="/login";return}now=await r.json();
 if(!hist||now.history_version!=hist.version){hist=await(await fetch("/api/history",{cache:"no-store"})).json()}fetched=Date.now();render()}catch(e){$("stamp").textContent="Not reachable, retrying…"}}
 async function act(a){await fetch("/api/"+a,{method:"POST"});setTimeout(load,a=="restart"?15000:1500)}
@@ -168,7 +168,12 @@ main{max-width:640px}.card+h2{margin-top:30px}
 <h2>Wi-Fi</h2><div class="card">
 <label>Network</label><div class="pw"><input name="ssid" value="%SSID%" placeholder="Network name"><button type="button" id="scan">Scan</button></div><div class="nets" id="nets"></div>
 <label>Password</label><div class="pw"><input type="password" name="pass" placeholder="%PASS_PH%"><button type="button" onclick="tog(this)">Show</button></div>
-<p class="hint">Leave the password empty to keep the one already stored.</p></div>
+<p class="hint">Leave the password empty to keep the one already stored.</p>
+<label class="chk" style="display:flex;align-items:center;gap:10px;color:var(--ink);font-size:15px;font-weight:400;margin-top:16px"><input type="checkbox" name="roam" value="1" %ROAM_SEL% style="width:18px;height:18px;margin:0">Mesh network: join the strongest access point, and move to a stronger one when the signal gets weak</label>
+<label>Address</label><div class="seg"><label><input type="radio" name="ipmode" value="dhcp" %DHCP_SEL% onchange="ipm()"><span>Automatic (DHCP)</span></label><label><input type="radio" name="ipmode" value="static" %STATIC_SEL% onchange="ipm()"><span>Static IP</span></label></div>
+<div id="static"><div class="row"><div><label>IP address</label><input name="ip" inputmode="decimal" value="%IP%" placeholder="192.168.1.50"></div><div><label>Subnet mask</label><input name="mask" inputmode="decimal" value="%MASK%" placeholder="255.255.255.0"></div>
+<div><label>Gateway (router)</label><input name="gw" inputmode="decimal" value="%GW%" placeholder="192.168.1.1"></div><div><label>DNS server</label><input name="dns" inputmode="decimal" value="%DNS%" placeholder="same as gateway"></div></div>
+<p class="hint">Reserve the address in your router too, so DHCP never hands it to something else. With DHCP, http://paperair.local/ finds the PaperDIY whatever its address.</p></div></div>
 <h2>Outdoor air</h2><div class="card">
 <label>PurpleAir read key</label><div class="pw"><input type="password" name="pa_key" value="%PA_KEY%"><button type="button" onclick="tog(this)">Show</button></div>
 <div class="row"><div><label>Sensor index</label><input name="pa_idx" inputmode="numeric" value="%PA_IDX%"></div><div><label>Backup sensor (0 = none)</label><input name="pa_bak" inputmode="numeric" value="%PA_BAK%"></div></div>
@@ -191,6 +196,7 @@ main{max-width:640px}.card+h2{margin-top:30px}
 <h2>Setup hotspot</h2><div class="card"><p class="muted" style="margin:0 0 12px">Opens the PaperAir-Setup hotspot (password <b>paperair</b>) for 15 minutes so a phone can change these settings without the network. Holding the lower button (G3) for 3 seconds does the same.</p>
 <button class="btn" onclick="fetch('/api/setup',{method:'POST'}).then(()=>alert('Hotspot opened. Join PaperAir-Setup and open http://192.168.4.1/'))">Open hotspot</button></div>
 <script>
+function ipm(){document.getElementById("static").style.display=document.querySelector("[name=ipmode]:checked").value=="static"?"":"none"}ipm();
 function tog(b){const i=b.parentNode.querySelector("input");i.type=i.type=="password"?"text":"password";b.textContent=i.type=="password"?"Show":"Hide"}
 const tzs=document.getElementById("tzsel"),tz=document.getElementById("tz");function syncTz(){tzs.value=[...tzs.options].some(o=>o.value==tz.value&&o.value)?tz.value:""}syncTz();tzs.onchange=()=>{if(tzs.value)tz.value=tzs.value};tz.oninput=syncTz;
 document.getElementById("scan").onclick=async function(){this.textContent="Scanning…";this.disabled=true;try{const r=await(await fetch("/api/scan")).json();

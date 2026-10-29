@@ -35,6 +35,11 @@ void settings_load() {
   p.begin(kNamespace, true);
   settings.ssid = p.getString("ssid", WIFI_SSID);
   settings.wifi_password = p.getString("pass", WIFI_PASSWORD);
+  settings.static_ip = p.getString("ip", "");
+  settings.subnet = p.getString("mask", "255.255.255.0");
+  settings.gateway = p.getString("gw", "");
+  settings.dns = p.getString("dns", "");
+  settings.roam = p.getBool("roam", true);
   settings.purpleair_key = p.getString("pa_key", PURPLEAIR_API_KEY);
   settings.purpleair_index = p.getInt("pa_idx", PURPLEAIR_SENSOR_INDEX);
   settings.purpleair_backup = p.getInt("pa_bak", PURPLEAIR_BACKUP_SENSOR_INDEX);
@@ -53,6 +58,11 @@ void settings_save() {
   p.begin(kNamespace, false);
   p.putString("ssid", settings.ssid);
   p.putString("pass", settings.wifi_password);
+  p.putString("ip", settings.static_ip);
+  p.putString("mask", settings.subnet);
+  p.putString("gw", settings.gateway);
+  p.putString("dns", settings.dns);
+  p.putBool("roam", settings.roam);
   p.putString("pa_key", settings.purpleair_key);
   p.putInt("pa_idx", settings.purpleair_index);
   p.putInt("pa_bak", settings.purpleair_backup);

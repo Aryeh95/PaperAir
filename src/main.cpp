@@ -4,6 +4,8 @@
 // minutes, and redraws the e-paper screen when something worth showing has changed.
 // Buttons: G4 switches between the main page and the 24-hour trends; G3 does a full refresh.
 #include <DNSServer.h>
+
+#include <cstring>
 #include <M5Unified.h>
 #include <Preferences.h>
 #include <WiFi.h>
@@ -55,6 +57,7 @@ bool redraw_now = true, clean_now = true;
 // Setup mode: a hotspot and a captive portal for the settings page, when there's no Wi-Fi to join,
 // when joining keeps failing, or when G3 is held for 3 seconds
 bool setup_mode = false;
+void join_wifi();
 unsigned long setup_since = 0;
 unsigned long wifi_begin_ms = 0;
 DNSServer dns;
@@ -79,14 +82,72 @@ void leave_setup() {
   dns.stop();
   WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_STA);
-  if (settings.have_wifi()) {
-    WiFi.begin(settings.ssid.c_str(), settings.wifi_password.c_str());
-    wifi_begin_ms = millis();
-  }
+  if (settings.have_wifi()) join_wifi();
   redraw_now = true;
 }
 
 bool elapsed(unsigned long since, unsigned long ms) { return millis() - since >= ms; }
+
+// Mesh networks have several access points with the same name; the SDK picks the first it hears.
+// From a scan (sync, or async results), find the strongest one. Returns its index or -1.
+int strongest_ap(int n) {
+  int best = -1;
+  for (int i = 0; i < n; i++)
+    if (WiFi.SSID(i) == settings.ssid && (best < 0 || WiFi.RSSI(i) > WiFi.RSSI(best))) best = i;
+  return best;
+}
+
+void begin_wifi_at(int i) {
+  Serial.printf("Wi-Fi: joining %s via %s (channel %d, %d dBm)\n", settings.ssid.c_str(), WiFi.BSSIDstr(i).c_str(),
+                WiFi.channel(i), WiFi.RSSI(i));
+  uint8_t bssid[6];
+  memcpy(bssid, WiFi.BSSID(i), 6);
+  WiFi.begin(settings.ssid.c_str(), settings.wifi_password.c_str(), WiFi.channel(i), bssid);
+}
+
+// Join the saved network, with the static address from the settings or DHCP
+void join_wifi() {
+  IPAddress ip, gw, mask, dns;
+  if (settings.have_static_ip() && ip.fromString(settings.static_ip)) {
+    if (!mask.fromString(settings.subnet)) mask = IPAddress(255, 255, 255, 0);
+    if (!gw.fromString(settings.gateway)) gw = IPAddress(ip[0], ip[1], ip[2], 1);
+    if (!dns.fromString(settings.dns)) dns = gw;
+    WiFi.config(ip, gw, mask, dns);
+  } else {
+    WiFi.config(IPAddress(), IPAddress(), IPAddress());   // back to DHCP
+  }
+  int best = -1;
+  if (settings.roam) best = strongest_ap(WiFi.scanNetworks(false, false, false, 300, 0, settings.ssid.c_str()));
+  if (best >= 0) begin_wifi_at(best);
+  else WiFi.begin(settings.ssid.c_str(), settings.wifi_password.c_str());
+  WiFi.scanDelete();
+  wifi_begin_ms = millis();
+}
+
+// Every 5 minutes while the signal is weak, look for a stronger access point and move to it
+void keep_roaming() {
+  static unsigned long checked_ms = 0;
+  static bool scanning = false;
+  if (!settings.roam) return;
+  if (!scanning) {
+    if (WiFi.RSSI() > -70 || !elapsed(checked_ms, 5UL * 60UL * 1000UL)) return;
+    checked_ms = millis();
+    WiFi.scanNetworks(true, false, false, 300, 0, settings.ssid.c_str());   // async, stays connected
+    scanning = true;
+    return;
+  }
+  const int n = WiFi.scanComplete();
+  if (n == WIFI_SCAN_RUNNING) return;
+  scanning = false;
+  const int best = n > 0 ? strongest_ap(n) : -1;
+  if (best >= 0 && memcmp(WiFi.BSSID(best), WiFi.BSSID(), 6) != 0 && WiFi.RSSI(best) >= WiFi.RSSI() + 8) {
+    Serial.printf("Wi-Fi: %d dBm here, moving to a stronger access point\n", WiFi.RSSI());
+    WiFi.disconnect();
+    begin_wifi_at(best);
+    wifi_begin_ms = millis();
+  }
+  WiFi.scanDelete();
+}
 
 void setup_display() {
   // Landscape, the right way up for the PaperDIY standing on its long edge
@@ -150,6 +211,7 @@ void keep_connected() {
     return;
   }
   if (setup_mode && settings.have_wifi() && elapsed(setup_since, 60UL * 1000UL)) leave_setup();   // joined after all
+  keep_roaming();
 
   // Outdoor air: on connecting, then every 10 minutes (a minute after a failure)
   const unsigned long wait = (outdoor.ok ? config::kOutdoorUpdateMs : 60UL * 1000UL);
@@ -294,12 +356,8 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.setHostname("paperair");
   WiFi.setAutoReconnect(true);
-  if (settings.have_wifi()) {
-    WiFi.begin(settings.ssid.c_str(), settings.wifi_password.c_str());
-    wifi_begin_ms = millis();
-  } else {
-    enter_setup();
-  }
+  if (settings.have_wifi()) join_wifi();
+  else enter_setup();
   configTzTime(settings.time_zone.c_str(), "pool.ntp.org", "time.google.com");
 
   WebHooks hooks;
@@ -321,8 +379,7 @@ void setup() {
     if (wifi_changed) {
       // Join the new network; the setup hotspot stays up a minute in case it fails
       WiFi.mode(WIFI_AP_STA);
-      WiFi.begin(settings.ssid.c_str(), settings.wifi_password.c_str());
-      wifi_begin_ms = millis();
+      join_wifi();
       setup_since = millis();
     }
     redraw_now = true;

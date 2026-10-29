@@ -17,7 +17,7 @@
 
 namespace {
 
-constexpr const char *kVersion = "1.2";
+constexpr const char *kVersion = "1.3";
 constexpr const char *kMetricKeys[air::kMetrics] = {"co2", "pm1", "pm25", "pm10", "voc", "nox", "hcho", "temp", "humidity"};
 
 WebServer server(80);
@@ -161,6 +161,9 @@ void handle_now() {
   dev["ssid"] = WiFi.SSID();
   dev["rssi"] = WiFi.RSSI();
   dev["ip"] = WiFi.localIP().toString();
+  dev["static_ip"] = settings.have_static_ip();
+  dev["bssid"] = WiFi.BSSIDstr();
+  dev["channel"] = WiFi.channel();
   dev["uptime"] = uptime();
   dev["heap"] = String(ESP.getFreeHeap() / 1024) + " KB";
   dev["version"] = kVersion;
@@ -266,6 +269,13 @@ void handle_settings_page() {
                                   : "");
   page.replace("%SSID%", html_escape(settings.ssid));
   page.replace("%PASS_PH%", settings.wifi_password.length() ? "(unchanged)" : "");
+  page.replace("%ROAM_SEL%", settings.roam ? "checked" : "");
+  page.replace("%DHCP_SEL%", settings.have_static_ip() ? "" : "checked");
+  page.replace("%STATIC_SEL%", settings.have_static_ip() ? "checked" : "");
+  page.replace("%IP%", html_escape(settings.static_ip));
+  page.replace("%MASK%", html_escape(settings.subnet));
+  page.replace("%GW%", html_escape(settings.gateway));
+  page.replace("%DNS%", html_escape(settings.dns));
   page.replace("%PA_KEY%", html_escape(settings.purpleair_key));
   page.replace("%PA_IDX%", String(settings.purpleair_index));
   page.replace("%PA_BAK%", String(settings.purpleair_backup));
@@ -295,6 +305,21 @@ void handle_settings_post() {
     settings.wifi_password = server.arg("pass");
     wifi_changed = true;
   }
+  {
+    String ip = server.arg("ip"), mask = server.arg("mask"), gw = server.arg("gw"), dns = server.arg("dns");
+    ip.trim(); mask.trim(); gw.trim(); dns.trim();
+    IPAddress check;
+    if (server.arg("ipmode") != "static" || !check.fromString(ip)) ip = "";   // DHCP, or no usable address
+    if (!check.fromString(mask)) mask = "255.255.255.0";
+    if (!check.fromString(gw)) gw = "";
+    if (!check.fromString(dns)) dns = "";
+    if (ip != settings.static_ip || mask != settings.subnet || gw != settings.gateway || dns != settings.dns) wifi_changed = true;
+    settings.static_ip = ip;
+    settings.subnet = mask;
+    settings.gateway = gw;
+    settings.dns = dns;
+  }
+  settings.roam = server.arg("roam") == "1";
   settings.purpleair_key = server.arg("pa_key");
   settings.purpleair_key.trim();
   settings.purpleair_index = server.arg("pa_idx").toInt();

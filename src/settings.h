@@ -6,6 +6,8 @@
 
 struct Settings {
   String ssid, wifi_password;
+  String static_ip, subnet, gateway, dns;   // empty static_ip = DHCP
+  bool roam = true;                         // mesh: join the strongest access point, move when weak
   String purpleair_key;
   int purpleair_index = 0, purpleair_backup = 0;
   String airnow_key, airnow_zip;
@@ -16,6 +18,7 @@ struct Settings {
   String time_zone;
 
   bool have_wifi() const { return ssid.length() > 0; }
+  bool have_static_ip() const { return static_ip.length() > 0; }
 };
 
 extern Settings settings;
