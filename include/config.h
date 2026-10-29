@@ -14,8 +14,9 @@ constexpr bool kClock24h = false;
 // corrected to match.
 constexpr float kTemperatureOffsetC = 0.0f;
 
-// Turn the picture upside down, for mounting the PaperDIY the other way up
-constexpr bool kFlipScreen = false;
+// Turn the picture upside down. True for the enclosures here, which stand the PaperDIY with its
+// buttons on top; false for the PaperDIY as it ships.
+constexpr bool kFlipScreen = true;
 
 // The red LED on the back of the board, next to the power switch. It's the power chip's power
 // indicator; off by default, since the display is on all the time anyway.

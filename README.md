@@ -98,6 +98,9 @@ the FPC wiring:
 | G4 | Switch between the main page and the 24-hour trends. The trends page goes back by itself after 2 minutes. |
 | G3 | A full black-and-white refresh, to clear any ghosting. One also happens every hour. |
 
+The 24-hour history is saved to flash every 5 minutes and comes back after a restart or a power
+cut, with a gap for the time the PaperDIY was off.
+
 ### Temperature offset
 
 Once the SEN66 is in its enclosure, compare its temperature with a thermometer for an hour. Put the
@@ -130,7 +133,7 @@ python tools/make_fonts.py    # regenerate the fonts after changing a size (need
 
 | Folder | Holds |
 |---|---|
-| `lib/air` | Plain C++ with no hardware: AQI, EPA correction, humidity compensation, PurpleAir and AirNow parsing, the 24-hour history, the Sensirion protocol checks, and the advice. It's all tested on a PC. |
+| `lib/air` | Plain C++ with no hardware: AQI, EPA correction, humidity compensation, PurpleAir and AirNow parsing, the 24-hour history and its save format, the Sensirion protocol checks, and the advice. It's all tested on a PC. |
 | `lib/ui` | The screens, drawn with M5GFX into a 960×540 canvas. The device and the desktop preview share this code. |
 | `src` | The device: sensor drivers, Wi-Fi and outdoor air, buttons, and when to refresh the screen. |
 | `preview` | The desktop preview. |

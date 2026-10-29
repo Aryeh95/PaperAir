@@ -130,6 +130,43 @@ static void test_history() {
   TEST_ASSERT_EQUAL_FLOAT(1000, h.at(Metric::CO2, 3));
 }
 
+static void test_history_save_restore() {
+  History h;
+  Readings r;
+  for (int i = 0; i < 10; i++) {
+    r[Metric::CO2] = 500 + i * 10;
+    h.push_for_preview(r);
+  }
+  r[Metric::CO2] = 777;
+  h.add(1000, r);  // an open period too
+  static uint8_t buf[History::kSaveSize];
+  const uint32_t t = 1700000000;
+  const size_t n = h.save(buf, sizeof buf, t);
+  TEST_ASSERT_EQUAL(16 + 11 * kMetrics * sizeof(float), n);
+
+  // Back after 20 minutes off, with the sensor already reading for 30 s before the clock was set
+  History g;
+  r[Metric::CO2] = 888;
+  g.add(30 * 1000, r);
+  TEST_ASSERT_TRUE(g.restore(buf, n, t + 20 * 60 + 30, 30 * 1000));
+  TEST_ASSERT_EQUAL(1 + 4 + 11, g.size());                // open, 4 empty, 11 saved
+  TEST_ASSERT_EQUAL_FLOAT(888, g.at(Metric::CO2, 0));
+  TEST_ASSERT_TRUE(std::isnan(g.at(Metric::CO2, 1)));
+  TEST_ASSERT_TRUE(std::isnan(g.at(Metric::CO2, 4)));
+  TEST_ASSERT_EQUAL_FLOAT(777, g.at(Metric::CO2, 5));     // the period that was open when saved
+  TEST_ASSERT_EQUAL_FLOAT(590, g.at(Metric::CO2, 6));
+  TEST_ASSERT_EQUAL_FLOAT(500, g.at(Metric::CO2, 15));
+
+  // Too old, bad data, or a history that already has finished periods: nothing changes
+  History x;
+  TEST_ASSERT_FALSE(x.restore(buf, n, t + 25 * 3600, 0));
+  buf[0] ^= 1;
+  TEST_ASSERT_FALSE(x.restore(buf, n, t + 60, 0));
+  buf[0] ^= 1;
+  TEST_ASSERT_FALSE(g.restore(buf, n, t + 60, 0));
+  TEST_ASSERT_EQUAL(0, x.size());
+}
+
 static void test_minutes_above() {
   History h;
   Readings r;
@@ -270,6 +307,7 @@ int main(int, char **) {
   RUN_TEST(test_parse_purpleair);
   RUN_TEST(test_parse_airnow);
   RUN_TEST(test_history);
+  RUN_TEST(test_history_save_restore);
   RUN_TEST(test_minutes_above);
   RUN_TEST(test_advice_states);
   RUN_TEST(test_advice_duration);

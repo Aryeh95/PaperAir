@@ -4,6 +4,7 @@
 // minutes, and redraws the e-paper screen when something worth showing has changed.
 // Buttons: G4 switches between the main page and the 24-hour trends; G3 does a full refresh.
 #include <M5Unified.h>
+#include <Preferences.h>
 #include <WiFi.h>
 
 #include <ctime>
@@ -33,6 +34,9 @@ Sen66 sen66(m5::In_I2C);  // not M5.In_I2C: that reference is only set once M5 i
 Sfa40 sfa40(m5::In_I2C);
 
 air::History history;
+Preferences store;             // the history, saved to flash every 5 minutes
+bool history_restored = false;
+unsigned long history_saved_ms = 0;
 air::Readings latest;
 bool sensor_seen = false;
 unsigned long sensor_ms = 0;      // last good SEN66 reading
@@ -126,6 +130,24 @@ void keep_connected() {
   if (outdoor.ok && elapsed(outdoor_ms, 60UL * 60UL * 1000UL)) outdoor = air::Outdoor();
 }
 
+// The history is kept against the clock so it can be carried over a restart: loaded once the
+// time server has set the clock, saved every 5 minutes after that.
+void keep_history() {
+  const time_t t = time(nullptr);
+  if (t < 1700000000) return;
+  static uint8_t buf[air::History::kSaveSize];
+  if (!history_restored) {
+    history_restored = true;
+    const size_t n = store.getBytes("history", buf, sizeof buf);
+    if (n && history.restore(buf, n, (uint32_t) t, millis())) Serial.println("History restored from flash");
+    history_saved_ms = millis();
+  } else if (elapsed(history_saved_ms, air::History::kBucketMs)) {
+    history_saved_ms = millis();
+    const size_t n = history.save(buf, sizeof buf, (uint32_t) t);
+    if (n) store.putBytes("history", buf, n);
+  }
+}
+
 ui::ScreenData screen_data() {
   ui::ScreenData d;
   d.now = latest;
@@ -215,6 +237,7 @@ void setup() {
   Serial.println("PaperAir starting");
 
   setup_display();
+  store.begin("paperair");
   Serial.println(sfa40.begin() ? "SFA40 found (formaldehyde readings start after 10 minutes)" : "No SFA40");
 
   WiFi.mode(WIFI_STA);
@@ -228,6 +251,7 @@ void loop() {
   check_buttons();
   read_sensors();
   keep_connected();
+  keep_history();
   update_screen();
   log_readings();
   delay(20);

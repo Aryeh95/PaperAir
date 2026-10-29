@@ -1,6 +1,7 @@
 #pragma once
 // One set of indoor readings, and a 24-hour history of them.
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 
 namespace air {
@@ -20,11 +21,54 @@ struct Readings {
 };
 
 // 24 hours of 5-minute averages, for the charts and for "building for 3 hours".
-// Kept in RAM: it starts again after a restart.
+// The device saves it to flash now and then (save / restore), so it survives a restart.
 class History {
  public:
   static constexpr uint32_t kBucketMs = 5UL * 60UL * 1000UL;
   static constexpr int kSlots = 288;
+  static constexpr size_t kSaveSize = 16 + (size_t) kSlots * kMetrics * sizeof(float);
+
+  // Writes the finished periods, and the current one as if finished, newest first, with the
+  // wall-clock time (Unix seconds). Returns the bytes used.
+  size_t save(uint8_t *out, size_t cap, uint32_t now_unix) const {
+    const int n = size();
+    if (cap < 16 + (size_t) n * kMetrics * sizeof(float)) return 0;
+    uint32_t head[4] = {kMagic, (uint32_t) n, now_unix, 0};
+    copy_(out, head, 16);
+    uint8_t *p = out + 16;
+    for (int age = 0; age < n; age++) {
+      for (int m = 0; m < kMetrics; m++) {
+        const float v = at((Metric) m, age);
+        copy_(p, &v, sizeof v);
+        p += sizeof v;
+      }
+    }
+    return p - out;
+  }
+
+  // Loads what save() wrote, before the first reading has finished a period: the saved periods go
+  // in first, then empty ones for the time the device was off. `now_unix` is the wall-clock time
+  // now and `uptime_ms` how long since boot, so readings taken before the clock was set keep
+  // their place. Returns false, and changes nothing, if the data is unusable or over a day old.
+  bool restore(const uint8_t *in, size_t len, uint32_t now_unix, uint32_t uptime_ms) {
+    if (size_ != 0 || len < 16) return false;
+    uint32_t head[4];
+    copy_(head, in, 16);
+    const uint32_t n = head[1], saved_at = head[2];
+    if (head[0] != kMagic || n > (uint32_t) kSlots || len < 16 + n * kMetrics * sizeof(float)) return false;
+    const uint32_t boot_unix = now_unix - uptime_ms / 1000;
+    if (boot_unix < saved_at) return false;
+    const uint32_t gap = (boot_unix - saved_at) / (kBucketMs / 1000);
+    if (gap >= (uint32_t) kSlots) return false;
+    const uint8_t *p = in + 16;
+    for (int age = (int) n - 1; age >= 0; age--) {  // oldest first
+      Readings r;
+      copy_(r.v, p + (size_t) age * kMetrics * sizeof(float), kMetrics * sizeof(float));
+      push_(r);
+    }
+    for (uint32_t i = 0; i < gap; i++) push_(Readings());
+    return true;
+  }
 
   void add(uint32_t now_ms, const Readings &r) {
     const uint32_t bucket = now_ms / kBucketMs;
@@ -94,6 +138,13 @@ class History {
     head_ = (head_ + 1) % kSlots;
     if (size_ < kSlots) size_++;
     version_++;
+  }
+
+  static constexpr uint32_t kMagic = 0x50414831;  // "PAH1"
+  static void copy_(void *dst, const void *src, size_t n) {
+    auto *d = (uint8_t *) dst;
+    auto *s = (const uint8_t *) src;
+    for (size_t i = 0; i < n; i++) d[i] = s[i];
   }
 
   Readings data_[kSlots];
