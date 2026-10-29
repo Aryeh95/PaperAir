@@ -201,14 +201,15 @@ def oem_bezel_with_lip(path, extra):
     parts = sorted(kit.split(only_watertight=False), key=lambda p: -p.volume)
     bez = next(p for p in parts if p.bounds[1][2] > -1 and (p.bounds[1][0] - p.bounds[0][0]) > 100 and p.bounds[0][1] < 10)   # the assembled copy
     m = Manifold(Mesh(vert_properties=np.asarray(bez.vertices, np.float32), tri_verts=np.asarray(bez.faces, np.uint32)))
-    # The stock window, in M5Stack's coordinates (front face at z -0.2, lip back at z -1.8)
+    # The stock window, in M5Stack's coordinates: front face at z -0.2, the lip 0.8 thick with a
+    # 0.6 chamfer on its front edge, the panel pocket behind it
     wx0, wx1, wy0, wy1 = -81.45, 23.56, -55.10, 4.62
-    cham, z_front, z_back = 0.6, -0.2, -1.8
-    outer = box(wx0 - 1, wx1 + 1, wy0 - 1, wy1 + 1, z_back, z_front)
+    cham, z_front, z_back = 0.6, -0.2, -1.0
+    outer = box(wx0 - 2, wx1 + 2, wy0 - 2, wy1 + 2, z_back, z_front)   # overlaps the stock lip, fills its chamfer
     hole = Manifold.batch_hull([box(wx0 + extra, wx1 - extra, wy0 + extra, wy1 - extra, z_back - 1, z_front - cham),
-                                box(wx0 + extra - cham, wx1 - extra + cham, wy0 + extra - cham, wy1 - extra + cham, z_front - 0.01, z_front + 1)])
-    ring = (outer - hole) ^ box(wx0 - 0.01, wx1 + 0.01, wy0 - 0.01, wy1 + 0.01, z_back, z_front)
-    return (m + ring).rotate([180, 0, 0])
+                                box(wx0 + extra - cham, wx1 - extra + cham, wy0 + extra - cham, wy1 - extra + cham, z_front - 0.01, z_front)])
+    hole += box(wx0 + extra - cham, wx1 - extra + cham, wy0 + extra - cham, wy1 - extra + cham, z_front - 0.01, z_front + 1)
+    return (m + (outer - hole)).rotate([180, 0, 0])
 
 
 # ---------------------------------------------------------------------------------------------
