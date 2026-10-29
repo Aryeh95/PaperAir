@@ -187,7 +187,7 @@ def oem_back_with_slot(path):
     """M5Stack's back plate (the second-largest part of their kit model) with the cable slot."""
     kit = trimesh.load(path)
     parts = sorted(kit.split(only_watertight=False), key=lambda p: -p.volume)
-    back = next(p for p in parts if p.bounds[1][2] < -2 and (p.bounds[1][0] - p.bounds[0][0]) > 100)
+    back = next(p for p in parts if p.bounds[1][2] < -2 and (p.bounds[1][0] - p.bounds[0][0]) > 100 and p.bounds[0][1] < 10)   # the assembled copy
     m = Manifold(Mesh(vert_properties=np.asarray(back.vertices, np.float32), tri_verts=np.asarray(back.faces, np.uint32)))
     x0, x1 = SLOT[0] - OEM_OFFSET[0], SLOT[1] - OEM_OFFSET[0]
     y0, y1 = SLOT[2] - OEM_OFFSET[1], SLOT[3] - OEM_OFFSET[1]
@@ -199,7 +199,7 @@ def oem_bezel_with_lip(path, extra):
     panel's black border stays covered. The lip's 45 degree chamfer is kept. Returned face down."""
     kit = trimesh.load(path)
     parts = sorted(kit.split(only_watertight=False), key=lambda p: -p.volume)
-    bez = next(p for p in parts if p.bounds[1][2] > -1 and (p.bounds[1][0] - p.bounds[0][0]) > 100)
+    bez = next(p for p in parts if p.bounds[1][2] > -1 and (p.bounds[1][0] - p.bounds[0][0]) > 100 and p.bounds[0][1] < 10)   # the assembled copy
     m = Manifold(Mesh(vert_properties=np.asarray(bez.vertices, np.float32), tri_verts=np.asarray(bez.faces, np.uint32)))
     # The stock window, in M5Stack's coordinates (front face at z -0.2, lip back at z -1.8)
     wx0, wx1, wy0, wy1 = -81.45, 23.56, -55.10, 4.62
