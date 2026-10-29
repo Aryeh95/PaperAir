@@ -78,25 +78,56 @@ the FPC wiring:
 ## Setting it up
 
 1. Install [PlatformIO](https://platformio.org/install) (the VS Code extension or the command line).
-2. Copy `include/secrets.example.h` to `include/secrets.h` and fill in:
-   - your Wi-Fi name and password
+2. Connect the PaperDIY by USB and run `pio run -t upload`. Use `pio device monitor` to watch the
+   log.
+3. The screen says "Set me up" and the PaperDIY opens a Wi-Fi hotspot called **PaperAir-Setup**
+   (password `paperair`). Join it with a phone; the settings page opens by itself (or go to
+   http://192.168.4.1/). Pick your Wi-Fi, enter its password, and fill in:
    - a PurpleAir read key and the sensor index of a PurpleAir sensor near you, plus a backup if you
      like
    - an AirNow key and your ZIP code, used as the fallback
+   - °F or °C, the 12/24-hour clock, the time zone, and a password for the web page
 
-   `secrets.h` is ignored by git, so none of this leaves your computer.
-3. Look through [`include/config.h`](include/config.h). It sets the time zone, °F or °C, the
-   12/24-hour clock, the temperature offset, flipping the screen, the red LED on the back and how
-   often it refreshes.
-4. Connect the PaperDIY by USB and run `pio run -t upload`. Use `pio device monitor` to watch the
-   log.
+   Save, and the PaperDIY joins your network. Everything is kept in flash on the device, so a
+   `git pull` and a new upload never touch it.
+
+You can skip the hotspot by copying `include/secrets.example.h` to `include/secrets.h` and
+filling it in before uploading; those become the defaults. `secrets.h` is ignored by git, so
+none of it leaves your computer. [`include/config.h`](include/config.h) has the rest: flipping the
+screen, the red LED on the back and how often the screen refreshes.
+
+### The web page
+
+On your network, open **http://paperair.local/** (or the IP address from the serial log) and sign
+in with the web password. It shows what the screen shows plus more: every reading with a good /
+elevated / high mark and a sparkline, a 24-hour chart of any reading (tap a tile; hover for the
+value at a time; 1 h to 24 h ranges with the watch and act levels shaded), the outdoor AQI, and the
+device's state. Buttons refresh the screen, switch its page, download the history as CSV, and
+restart. **Settings** changes everything the setup hotspot did, with a Wi-Fi scan, and can open the
+hotspot again.
+
+Other things on the network can read the same data, sending the web password as a bearer token:
+
+```
+curl -H "Authorization: Bearer <password>" http://paperair.local/api/now
+curl -H "Authorization: Bearer <password>" http://paperair.local/api/history
+```
+
+`/api/now` has the readings, advice, outdoor air and device state; `/api/history` the 24 hours at
+5-minute steps, oldest first. `/history.csv` is the same as a spreadsheet.
+
+### Setup mode
+
+The hotspot opens by itself when there is no Wi-Fi saved, when joining keeps failing for a
+minute, or when the **G3** button is held for 3 seconds (hold it again, or wait 15 minutes, to
+close it). While it is open the screen says how to reach it.
 
 ### Buttons
 
 | Button | Does |
 |---|---|
 | G4 | Switch between the main page and the 24-hour trends. The trends page goes back by itself after 2 minutes. |
-| G3 | A full black-and-white refresh, to clear any ghosting. One also happens every hour. |
+| G3 | A full black-and-white refresh, to clear any ghosting. One also happens every hour. Held for 3 seconds: open or close the setup hotspot. |
 
 The 24-hour history is saved to flash every 5 minutes and comes back after a restart or a power
 cut, with a gap for the time the PaperDIY was off.
@@ -104,7 +135,8 @@ cut, with a gap for the time the PaperDIY was off.
 ### Temperature offset
 
 Once the SEN66 is in its enclosure, compare its temperature with a thermometer for an hour. Put the
-difference in `kTemperatureOffsetC` in `config.h`. Humidity is corrected to match.
+difference in the settings page (or `kTemperatureOffsetC` in `config.h`). Humidity is corrected to
+match.
 
 ## Outdoor air
 

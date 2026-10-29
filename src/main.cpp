@@ -3,6 +3,7 @@
 // Reads the SEN66 (and an SFA40 if there is one) every second, fetches outdoor air every 10
 // minutes, and redraws the e-paper screen when something worth showing has changed.
 // Buttons: G4 switches between the main page and the 24-hour trends; G3 does a full refresh.
+#include <DNSServer.h>
 #include <M5Unified.h>
 #include <Preferences.h>
 #include <WiFi.h>
@@ -17,12 +18,8 @@
 #include "readings.h"
 #include "screen.h"
 #include "sensors.h"
-
-#if __has_include("secrets.h")
-#include "secrets.h"
-#else
-#error "Copy include/secrets.example.h to include/secrets.h and fill it in"
-#endif
+#include "settings.h"
+#include "web.h"
 
 using air::Metric;
 
@@ -54,6 +51,40 @@ unsigned long page_ms = 0;
 std::string shown_signature, shown_headline;
 unsigned long drawn_ms = 0, cleaned_ms = 0;
 bool redraw_now = true, clean_now = true;
+
+// Setup mode: a hotspot and a captive portal for the settings page, when there's no Wi-Fi to join,
+// when joining keeps failing, or when G3 is held for 3 seconds
+bool setup_mode = false;
+unsigned long setup_since = 0;
+unsigned long wifi_begin_ms = 0;
+DNSServer dns;
+constexpr const char *kSetupSsid = "PaperAir-Setup", *kSetupPassword = "paperair";
+constexpr unsigned long kSetupTimeoutMs = 15UL * 60UL * 1000UL;   // then back to trying the Wi-Fi
+
+void enter_setup() {
+  if (setup_mode) return;
+  setup_mode = true;
+  setup_since = millis();
+  WiFi.mode(settings.have_wifi() ? WIFI_AP_STA : WIFI_AP);
+  WiFi.softAP(kSetupSsid, kSetupPassword);
+  dns.start(53, "*", WiFi.softAPIP());   // every name resolves to us, so phones open the portal
+  Serial.printf("Setup mode: join %s (password %s), then open http://%s/\n", kSetupSsid, kSetupPassword,
+                WiFi.softAPIP().toString().c_str());
+  redraw_now = true;
+}
+
+void leave_setup() {
+  if (!setup_mode) return;
+  setup_mode = false;
+  dns.stop();
+  WiFi.softAPdisconnect(true);
+  WiFi.mode(WIFI_STA);
+  if (settings.have_wifi()) {
+    WiFi.begin(settings.ssid.c_str(), settings.wifi_password.c_str());
+    wifi_begin_ms = millis();
+  }
+  redraw_now = true;
+}
 
 bool elapsed(unsigned long since, unsigned long ms) { return millis() - since >= ms; }
 
@@ -99,8 +130,8 @@ void read_sensors() {
   r[Metric::PM10] = s.pm10;
   r[Metric::VOC] = s.voc;
   r[Metric::NOx] = s.nox;
-  r[Metric::Temp] = s.temperature - config::kTemperatureOffsetC;
-  r[Metric::Humidity] = air::compensate_humidity(s.humidity, s.temperature, config::kTemperatureOffsetC);
+  r[Metric::Temp] = s.temperature - settings.temperature_offset_c;
+  r[Metric::Humidity] = air::compensate_humidity(s.humidity, s.temperature, settings.temperature_offset_c);
   r[Metric::HCHO] = (sfa40.found() && !elapsed(hcho_ms, 30000)) ? hcho : NAN;
   latest = r;
   history.add(millis(), r);
@@ -113,7 +144,12 @@ void keep_connected() {
     Serial.println(connected ? "Wi-Fi connected, IP " + WiFi.localIP().toString() : String("Wi-Fi lost"));
     was_connected = connected;
   }
-  if (!connected) return;
+  if (!connected) {
+    // No Wi-Fi to join, or a minute of failing to join it: open the setup hotspot as well
+    if (!setup_mode && (!settings.have_wifi() || elapsed(wifi_begin_ms, 60UL * 1000UL))) enter_setup();
+    return;
+  }
+  if (setup_mode && settings.have_wifi() && elapsed(setup_since, 60UL * 1000UL)) leave_setup();   // joined after all
 
   // Outdoor air: on connecting, then every 10 minutes (a minute after a failure)
   const unsigned long wait = (outdoor.ok ? config::kOutdoorUpdateMs : 60UL * 1000UL);
@@ -159,13 +195,18 @@ ui::ScreenData screen_data() {
   const float pm25 = d.now[Metric::PM25];
   d.indoor_aqi = std::isnan(pm25) ? -1 : air::aqi_from_pm25(pm25);
   d.hcho_fitted = sfa40.found();
-  d.fahrenheit = config::kFahrenheit;
-  d.clock_24h = config::kClock24h;
+  d.fahrenheit = settings.fahrenheit;
+  d.clock_24h = settings.clock_24h;
   d.wifi_ok = WiFi.status() == WL_CONNECTED;
   const time_t t = time(nullptr);
   d.time_valid = t > 1700000000;  // set by the time server
   if (d.time_valid) localtime_r(&t, &d.local_time);
   d.page = page;
+  if (setup_mode) {
+    d.advice.headline = "Set me up.";
+    d.advice.detail = std::string("On your phone, join the Wi-Fi network ") + kSetupSsid + " (password " + kSetupPassword + ").";
+    d.advice.outdoor = "A setup page opens. If it doesn't, go to http://" + std::string(WiFi.softAPIP().toString().c_str()) + "/";
+  }
   return d;
 }
 
@@ -204,12 +245,21 @@ void update_screen() {
 
 void check_buttons() {
   M5.update();
+  static bool held = false;   // G3 held for 3 seconds opens the setup hotspot, or closes it again
+  if (M5.BtnB.pressedFor(3000)) {
+    if (!held) {
+      held = true;
+      if (setup_mode) leave_setup(); else enter_setup();
+    }
+  } else if (M5.BtnB.isReleased()) {
+    held = false;
+  }
   if (M5.BtnA.wasPressed()) {
     page = page == ui::Page::Main ? ui::Page::Trends : ui::Page::Main;
     page_ms = millis();
     redraw_now = true;
   }
-  if (M5.BtnB.wasPressed()) redraw_now = clean_now = true;
+  if (M5.BtnB.wasReleased() && !M5.BtnB.wasReleaseFor(3000)) redraw_now = clean_now = true;
   if (page == ui::Page::Trends && elapsed(page_ms, config::kTrendsTimeoutMs)) {
     page = ui::Page::Main;
     redraw_now = true;
@@ -240,11 +290,44 @@ void setup() {
   store.begin("paperair");
   Serial.println(sfa40.begin() ? "SFA40 found (formaldehyde readings start after 10 minutes)" : "No SFA40");
 
+  settings_load();
   WiFi.mode(WIFI_STA);
   WiFi.setHostname("paperair");
   WiFi.setAutoReconnect(true);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  configTzTime(config::kTimeZone, "pool.ntp.org", "time.google.com");
+  if (settings.have_wifi()) {
+    WiFi.begin(settings.ssid.c_str(), settings.wifi_password.c_str());
+    wifi_begin_ms = millis();
+  } else {
+    enter_setup();
+  }
+  configTzTime(settings.time_zone.c_str(), "pool.ntp.org", "time.google.com");
+
+  WebHooks hooks;
+  hooks.data = screen_data;
+  hooks.refresh = [] { redraw_now = clean_now = true; };
+  hooks.toggle_page = [] {
+    page = page == ui::Page::Main ? ui::Page::Trends : ui::Page::Main;
+    page_ms = millis();
+    redraw_now = true;
+  };
+  hooks.sen66_started = [] { return sen66.started(); };
+  hooks.sensor_age_ms = [] { return millis() - sensor_ms; };
+  hooks.outdoor_age_ms = [] { return millis() - outdoor_ms; };
+  hooks.in_setup = [] { return setup_mode; };
+  hooks.enter_setup = [] { enter_setup(); };
+  hooks.settings_changed = [](bool wifi_changed) {
+    settings_save();
+    configTzTime(settings.time_zone.c_str(), "pool.ntp.org", "time.google.com");
+    if (wifi_changed) {
+      // Join the new network; the setup hotspot stays up a minute in case it fails
+      WiFi.mode(WIFI_AP_STA);
+      WiFi.begin(settings.ssid.c_str(), settings.wifi_password.c_str());
+      wifi_begin_ms = millis();
+      setup_since = millis();
+    }
+    redraw_now = true;
+  };
+  web_begin(hooks);
 }
 
 void loop() {
@@ -254,5 +337,10 @@ void loop() {
   keep_history();
   update_screen();
   log_readings();
+  if (setup_mode) {
+    dns.processNextRequest();
+    if (settings.have_wifi() && elapsed(setup_since, kSetupTimeoutMs)) leave_setup();
+  }
+  web_loop();
   delay(20);
 }

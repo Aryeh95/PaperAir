@@ -6,7 +6,7 @@
 #include "airnow.h"
 #include "aqi.h"
 #include "purpleair.h"
-#include "secrets.h"
+#include "settings.h"
 
 // The certificate authorities built into the ESP32 Arduino core, to check who we're talking to
 extern const uint8_t ca_bundle_start[] asm("_binary_x509_crt_bundle_start");
@@ -37,11 +37,11 @@ String get(const String &url, const char *header_name, const char *header_value,
 }
 
 bool from_purpleair(long index, air::Outdoor &out) {
-  if (!strlen(PURPLEAIR_API_KEY) || index <= 0) return false;
+  if (!settings.purpleair_key.length() || index <= 0) return false;
   const String url = "https://api.purpleair.com/v1/sensors/" + String(index) +
                      "?fields=name,location_type,last_seen,humidity,pm2.5_cf_1,pm2.5_cf_1_a,pm2.5_cf_1_b";
   String error;
-  const String body = get(url, "X-API-Key", PURPLEAIR_API_KEY, error);
+  const String body = get(url, "X-API-Key", settings.purpleair_key.c_str(), error);
   if (body.isEmpty()) {
     Serial.printf("PurpleAir %ld: %s\n", index, error.c_str());
     return false;
@@ -57,9 +57,9 @@ bool from_purpleair(long index, air::Outdoor &out) {
 }
 
 bool from_airnow(air::Outdoor &out) {
-  if (!strlen(AIRNOW_API_KEY) || !strlen(AIRNOW_ZIP_CODE)) return false;
+  if (!settings.airnow_key.length() || !settings.airnow_zip.length()) return false;
   const String url = String("https://www.airnowapi.org/aq/observation/current/ziplatlong/?format=application/json&zipCode=") +
-                     AIRNOW_ZIP_CODE + "&distance=25&API_KEY=" + AIRNOW_API_KEY;
+                     settings.airnow_zip + "&distance=25&API_KEY=" + settings.airnow_key;
   String error;
   const String body = get(url, nullptr, nullptr, error);
   if (body.isEmpty()) {
@@ -81,8 +81,8 @@ bool from_airnow(air::Outdoor &out) {
 
 air::Outdoor fetch_outdoor() {
   air::Outdoor out;
-  if (from_purpleair(PURPLEAIR_SENSOR_INDEX, out)) return out;
-  if (from_purpleair(PURPLEAIR_BACKUP_SENSOR_INDEX, out)) return out;
+  if (from_purpleair(settings.purpleair_index, out)) return out;
+  if (from_purpleair(settings.purpleair_backup, out)) return out;
   if (from_airnow(out)) return out;
   return air::Outdoor();
 }

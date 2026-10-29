@@ -18,3 +18,7 @@
 // https://docs.airnowapi.org/ . Leave the key empty to skip AirNow.
 #define AIRNOW_API_KEY ""
 #define AIRNOW_ZIP_CODE ""
+
+// Password for the web page (http://paperair.local/). Empty = no login.
+// All of these can also be changed later on the device's settings page.
+#define WEB_PASSWORD ""
