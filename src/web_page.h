@@ -199,9 +199,10 @@ main{max-width:640px}.card+h2{margin-top:30px}
 function ipm(){document.getElementById("static").style.display=document.querySelector("[name=ipmode]:checked").value=="static"?"":"none"}ipm();
 function tog(b){const i=b.parentNode.querySelector("input");i.type=i.type=="password"?"text":"password";b.textContent=i.type=="password"?"Show":"Hide"}
 const tzs=document.getElementById("tzsel"),tz=document.getElementById("tz");function syncTz(){tzs.value=[...tzs.options].some(o=>o.value==tz.value&&o.value)?tz.value:""}syncTz();tzs.onchange=()=>{if(tzs.value)tz.value=tzs.value};tz.oninput=syncTz;
-document.getElementById("scan").onclick=async function(){this.textContent="Scanning…";this.disabled=true;try{const r=await(await fetch("/api/scan")).json();
+document.getElementById("scan").onclick=async function(){this.textContent="Scanning…";this.disabled=true;try{const r=await(await fetch("/api/scan")).json();r.sort((a,b)=>b.rssi-a.rssi);
 document.getElementById("nets").innerHTML=r.length?r.map(n=>`<button type="button" class="net" data-s="${n.ssid.replace(/"/g,"&quot;")}"><span>${n.ssid.replace(/</g,"&lt;")} ${n.secure?"🔒":""}</span><small>${n.rssi} dBm</small></button>`).join(""):'<span class="hint">No networks found. Try again.</span>';
 for(const b of document.querySelectorAll(".net"))b.onclick=()=>{document.querySelector("[name=ssid]").value=b.dataset.s;document.querySelector("[name=pass]").focus()}}catch(e){alert("Scan failed: "+e)}this.textContent="Scan";this.disabled=false};
+if(document.querySelector(".notice")&&!document.querySelector("[name=ssid]").value)document.getElementById("scan").click();
 </script></main></body></html>)HTML";
 
 static const char kSavedPage[] PROGMEM = R"HTML(<!doctype html><html lang="en"><head><meta charset="utf-8">
