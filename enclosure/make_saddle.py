@@ -10,6 +10,8 @@ cable can leave the case. Pass M5Stack's STL with --oem to cut it; nothing of th
 Parts:
   saddle.stl              one piece. Printed standing on its bottom face, as exported, no supports.
   paperdiy_back_slot.stl  M5Stack's back plate with the slot (only with --oem). Printed as M5Stack's.
+  paperdiy_bezel_lip.stl  M5Stack's bezel with its lip 2 mm wider all round (--lip), so the panel's
+                          black border stays covered. Printed face down, as exported.
 
 Coordinates (mm), "local": X to the right seen from the front, Y down the screen (0 = the top edge
 of the case, where the buttons are), Z into the case (0 = the bezel's front face). The saddle is then
@@ -192,6 +194,23 @@ def oem_back_with_slot(path):
     return m - box(x0, x1, y0, y1, -20, 20)
 
 
+def oem_bezel_with_lip(path, extra):
+    """M5Stack's bezel with its window lip reaching `extra` mm further in on all four sides, so the
+    panel's black border stays covered. The lip's 45 degree chamfer is kept. Returned face down."""
+    kit = trimesh.load(path)
+    parts = sorted(kit.split(only_watertight=False), key=lambda p: -p.volume)
+    bez = next(p for p in parts if p.bounds[1][2] > -1 and (p.bounds[1][0] - p.bounds[0][0]) > 100)
+    m = Manifold(Mesh(vert_properties=np.asarray(bez.vertices, np.float32), tri_verts=np.asarray(bez.faces, np.uint32)))
+    # The stock window, in M5Stack's coordinates (front face at z -0.2, lip back at z -1.8)
+    wx0, wx1, wy0, wy1 = -81.45, 23.56, -55.10, 4.62
+    cham, z_front, z_back = 0.6, -0.2, -1.8
+    outer = box(wx0 - 1, wx1 + 1, wy0 - 1, wy1 + 1, z_back, z_front)
+    hole = Manifold.batch_hull([box(wx0 + extra, wx1 - extra, wy0 + extra, wy1 - extra, z_back - 1, z_front - cham),
+                                box(wx0 + extra - cham, wx1 - extra + cham, wy0 + extra - cham, wy1 - extra + cham, z_front - 0.01, z_front + 1)])
+    ring = (outer - hole) ^ box(wx0 - 0.01, wx1 + 0.01, wy0 - 0.01, wy1 + 0.01, z_back, z_front)
+    return (m + ring).rotate([180, 0, 0])
+
+
 # ---------------------------------------------------------------------------------------------
 def to_trimesh(m):
     mesh = m.to_mesh()
@@ -202,6 +221,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default="stl")
     ap.add_argument("--oem", help="M5Stack's PaperDlY_Complete_Kit.stl, to cut the slot into its back plate")
+    ap.add_argument("--lip", type=float, default=2.0, help="with --oem: also make a bezel whose lip reaches this much further in (mm)")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
     s = build()
@@ -217,6 +237,12 @@ def main():
         t = to_trimesh(b)
         t.export(os.path.join(args.out, "paperdiy_back_slot.stl"))
         print(f"back plate with slot: {b.volume():.0f} mm^3, {b.status()}")
+        if args.lip > 0:
+            z = oem_bezel_with_lip(args.oem, args.lip)
+            t = to_trimesh(z)
+            t.apply_translation(-t.bounds[0])
+            t.export(os.path.join(args.out, "paperdiy_bezel_lip.stl"))
+            print(f"bezel with a {args.lip} mm wider lip: {z.volume():.0f} mm^3, {z.status()}")
 
 
 if __name__ == "__main__":
