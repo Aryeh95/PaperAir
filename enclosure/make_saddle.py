@@ -9,7 +9,7 @@ cable can leave the case. Pass M5Stack's STL with --oem to cut it; nothing of th
 
 Parts:
   saddle.stl              one piece. Printed standing on its bottom face, as exported, no supports.
-  paperdiy_back_slot.stl  M5Stack's back plate with the slot and two countersunk screw holes (only
+  paperdiy_back_slot.stl  M5Stack's back plate with the slot and two countersunk M3 holes (only
                           with --oem). Printed as M5Stack's.
   paperdiy_bezel_lip.stl  M5Stack's bezel with its lip 2 mm wider all round (--lip), so the panel's
                           black border stays covered. Printed face down, as exported.
@@ -60,11 +60,11 @@ T_FOOT = SEN_Z0 + SEN[2] + 0.2 + WALL
 SFA = (17.3, 15.2, 3.6)              # SFA40 carrier board, 16.9 x 14.8 x 3.4 measured, plus clearance
 SFA_RECESS = 0.6
 
-# Two M2 screws hold the case to the saddle: countersunk, through the back plate from inside the
-# case (over the panel, where nothing is behind the plate), into heat-set inserts in bosses on the
-# saddle's face. M2 x 3 inserts (3.2 mm hole, 4.5 deep), M2 x 6 countersunk screws.
+# Two M3 screws hold the case to the saddle: countersunk, through the back plate from inside the
+# case (over the panel, where there is 3 mm behind the plate), into heat-set inserts in bosses on
+# the saddle's face. M3 x 5.7 inserts (4.0 mm hole, 6.7 deep), M3 x 8 countersunk screws.
 SCREWS = ((22.0, 27.0), (45.0, 27.0))   # in case coordinates: left of the cable slot, above the foot
-INSERT_HOLE, INSERT_DEPTH, BOSS = 3.2, 4.5, 7.0
+INSERT_HOLE, INSERT_DEPTH, BOSS = 4.0, 6.7, 9.0
 
 X0, X1 = -CLR - WALL, CASE[0] + CLR + WALL
 Y1 = CASE[1] + CLR + FLOOR           # where the saddle's front-bottom edge meets the desk
@@ -209,8 +209,8 @@ def oem_back_with_slot(path):
     # Screw holes with a 90 degree countersink on the inner face (the plate is z -6.5 to -5.3)
     for x, y in SCREWS:
         ox, oy = x - OEM_OFFSET[0], y - OEM_OFFSET[1]
-        m -= Manifold.cylinder(20, 1.15, circular_segments=SEG).translate([ox, oy, -10])
-        m -= Manifold.cylinder(1.3, 1.15, 2.45, circular_segments=SEG).translate([ox, oy, -6.6])
+        m -= Manifold.cylinder(20, 1.7, circular_segments=SEG).translate([ox, oy, -10])
+        m -= Manifold.cylinder(1.3, 1.7, 3.0, circular_segments=SEG).translate([ox, oy, -6.6])   # the head stands 0.5 proud
     return m
 
 
