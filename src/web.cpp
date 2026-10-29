@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 #include <ESPmDNS.h>
 #include <WebServer.h>
+#include <Update.h>
 #include <WiFi.h>
 #include <esp_random.h>
 
@@ -12,17 +13,19 @@
 #include "advice.h"
 #include "aqi.h"
 #include "config.h"
+#include "ota.h"
 #include "settings.h"
+#include "version.h"
 #include "web_page.h"
 
 namespace {
 
-constexpr const char *kVersion = "1.3";
 constexpr const char *kMetricKeys[air::kMetrics] = {"co2", "pm1", "pm25", "pm10", "voc", "nox", "hcho", "temp", "humidity"};
 
 WebServer server(80);
 WebHooks hooks;
 String session;  // the cookie value of the one signed-in session; empty = nobody signed in
+bool upload_ok = false;   // the firmware upload in progress came from a signed-in browser
 
 bool password_set() { return settings.web_password.length() > 0; }
 
@@ -167,6 +170,8 @@ void handle_now() {
   dev["uptime"] = uptime();
   dev["heap"] = String(ESP.getFreeHeap() / 1024) + " KB";
   dev["version"] = kVersion;
+  dev["build"] = kBuild;
+  dev["pending"] = ota_pending();
   dev["sen66"] = hooks.sen66_started() ? "reading, " + ago(hooks.sensor_age_ms()) : "not found";
   dev["sfa40"] = d.hcho_fitted ? "found" : "not fitted";
   dev["page"] = d.page == ui::Page::Main ? "main" : "trends";
@@ -174,6 +179,7 @@ void handle_now() {
   serializeJson(doc, out);
   server.sendHeader("Cache-Control", "no-store");
   server.send(200, "application/json", out);
+  ota_web_served();
 }
 
 // The history is 288 points x 9 metrics; sent in pieces rather than built as one string
@@ -288,6 +294,10 @@ void handle_settings_page() {
   page.replace("%T_OFF%", String(settings.temperature_offset_c, 1));
   page.replace("%TZ%", html_escape(settings.time_zone));
   page.replace("%WEB_PH%", password_set() ? "(unchanged)" : "none set, the page is open to the network");
+  page.replace("%VER%", kVersion);
+  page.replace("%BUILD%", kBuild);
+  page.replace("%PENDING%", ota_pending() ? "<span class=\"watch\">Not confirmed yet: if it fails before it has run for a while, the previous firmware comes back by itself.</span>" : "");
+  page.replace("%ROLLBACK%", ota_can_roll_back() ? "<button type=\"button\" class=\"btn\" onclick=\"if(confirm('Restart into the previous firmware?'))fetch('/api/rollback',{method:'POST'}).then(()=>alert('Restarting into the previous firmware. Reload in 20 seconds.'))\">Boot the previous firmware</button>" : "");
   server.sendHeader("Cache-Control", "no-store");
   server.send(200, "text/html", page);
 }
@@ -430,6 +440,47 @@ void web_begin(const WebHooks &h) {
     if (hooks.enter_setup) hooks.enter_setup();
     server.send(200, "application/json", "{\"ok\":true}");
   });
+  server.on("/api/rollback", HTTP_POST, [] {
+    if (!require_login(false)) return;
+    if (!ota_can_roll_back()) {
+      server.send(409, "application/json", "{\"error\":\"no previous firmware\"}");
+      return;
+    }
+    server.send(200, "application/json", "{\"ok\":true}");
+    ota_roll_back();
+  });
+  // A firmware.bin from the browser. The upload handler runs chunk by chunk, then the first
+  server.on(
+      "/update", HTTP_POST,
+      [] {
+        if (!upload_ok) {
+          server.send(401, "application/json", "{\"error\":\"sign in\"}");
+          return;
+        }
+        if (Update.hasError()) {
+          server.send(500, "application/json", "{\"error\":\"" + String(Update.errorString()) + "\"}");
+          return;
+        }
+        server.send(200, "application/json", "{\"ok\":true}");
+        delay(300);
+        ESP.restart();
+      },
+      [] {
+        HTTPUpload &up = server.upload();
+        if (up.status == UPLOAD_FILE_START) {
+          upload_ok = signed_in();
+          if (!upload_ok) return;
+          Serial.printf("Update: receiving %s\n", up.filename.c_str());
+          if (!Update.begin(UPDATE_SIZE_UNKNOWN)) Update.printError(Serial);
+        } else if (up.status == UPLOAD_FILE_WRITE) {
+          if (upload_ok && !Update.hasError()) Update.write(up.buf, up.currentSize);
+        } else if (up.status == UPLOAD_FILE_END) {
+          if (upload_ok && Update.end(true)) Serial.printf("Update: %u bytes written, restarting\n", up.totalSize);
+          else if (upload_ok) Update.printError(Serial);
+        } else if (up.status == UPLOAD_FILE_ABORTED) {
+          Update.abort();
+        }
+      });
   server.on("/api/restart", HTTP_POST, [] {
     if (!require_login(false)) return;
     server.send(200, "application/json", "{\"ok\":true}");
@@ -456,6 +507,7 @@ void web_loop() {
       MDNS.addService("http", "tcp", 80);
       Serial.println("Web: http://paperair.local/");
     }
+    ota_begin(settings.web_password);
   }
   server.handleClient();
 }

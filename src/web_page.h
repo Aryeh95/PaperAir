@@ -143,7 +143,7 @@ const pill=$("mood");pill.style.color=m[1];pill.lastElementChild.textContent=m[0
 const ai=$("aqi-in"),ao=$("aqi-out"),o=now.outdoor;ai.style.setProperty("--c",aqiColor(now.indoor_aqi>=0?now.indoor_aqi:null));ai.children[1].textContent=now.indoor_aqi>=0?now.indoor_aqi:"--";
 ao.style.setProperty("--c",aqiColor(o.ok?o.aqi:null));ao.children[1].textContent=o.ok?o.aqi:"--";ao.children[2].textContent=o.ok?o.category:"no reading";
 tiles();$("outside").innerHTML=o.ok?`<div class="outbig"><b style="color:${aqiColor(o.aqi)}">${o.aqi}</b><div><div class="cat">${o.category}</div><div class="muted">PM2.5 ${f(o.pm25,1)} µg/m³ · ${o.source||"outdoor sensor"}</div><div class="muted" style="font-size:13px">updated ${o.age}</div></div></div>`:'<span class="muted">No outdoor reading yet. Add a PurpleAir or AirNow key in Settings.</span>';
-const d=now.device;$("device").innerHTML=kv([["Wi-Fi",bars(d.rssi)+d.ssid+` <span class="muted">${d.rssi} dBm</span>`],["Address",d.ip+(d.static_ip?' <span class="muted">static</span>':"")],["Access point",d.bssid+` <span class="muted">ch ${d.channel}</span>`],["Up for",d.uptime],["SEN66",d.sen66],["SFA40",d.sfa40],["Screen",d.page+" page"],["Free memory",d.heap],["Clock",now.time_valid?"synced":"not set"]]);$("ver").textContent="firmware "+d.version;chart()}
+const d=now.device;$("device").innerHTML=kv([["Wi-Fi",bars(d.rssi)+d.ssid+` <span class="muted">${d.rssi} dBm</span>`],["Address",d.ip+(d.static_ip?' <span class="muted">static</span>':"")],["Access point",d.bssid+` <span class="muted">ch ${d.channel}</span>`],["Up for",d.uptime],["SEN66",d.sen66],["SFA40",d.sfa40],["Screen",d.page+" page"],["Free memory",d.heap],["Clock",now.time_valid?"synced":"not set"]]);$("ver").innerHTML="firmware "+d.version+" · built "+d.build+(d.pending?' · <span class="watch">not confirmed yet</span>':"");chart()}
 async function load(){try{const r=await fetch("/api/now",{cache:"no-store"});if(r.status==401){location="/login";return}now=await r.json();
 if(!hist||now.history_version!=hist.version){hist=await(await fetch("/api/history",{cache:"no-store"})).json()}fetched=Date.now();render()}catch(e){$("stamp").textContent="Not reachable, retrying…"}}
 async function act(a){await fetch("/api/"+a,{method:"POST"});setTimeout(load,a=="restart"?15000:1500)}
@@ -160,6 +160,8 @@ main{max-width:640px}.card+h2{margin-top:30px}
 .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}.seg label{flex:1;margin:0;text-align:center;padding:9px;cursor:pointer;color:var(--muted);font-size:14px}
 .seg input{display:none}.seg input:checked+span{color:var(--ink);font-weight:600}.seg label:has(input:checked){background:var(--soft)}
 .notice{border-left:4px solid var(--accent);padding:12px 16px;margin-bottom:16px}
+.bar{height:8px;border-radius:4px;background:var(--soft);overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+input[type=file]{padding:8px}
 .save{position:sticky;bottom:0;padding:14px 0 18px;background:linear-gradient(transparent,var(--bg) 30%);display:flex;gap:10px;align-items:center;justify-content:space-between}
 </style></head><body><main>
 <header><a class="brand" href="%BACK%"><span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h8a3 3 0 1 0-3-3"/><path d="M3 17h12a3 3 0 1 1-3 3"/><path d="M3 7h14a3 3 0 1 0-3-3"/></svg></span>PaperAir</a><span class="stamp">Settings</span></header>
@@ -195,8 +197,19 @@ main{max-width:640px}.card+h2{margin-top:30px}
 </form>
 <h2>Setup hotspot</h2><div class="card"><p class="muted" style="margin:0 0 12px">Opens the PaperAir-Setup hotspot (password <b>paperair</b>) for 15 minutes so a phone can change these settings without the network. Holding the lower button (G3) for 3 seconds does the same.</p>
 <button class="btn" onclick="fetch('/api/setup',{method:'POST'}).then(()=>alert('Hotspot opened. Join PaperAir-Setup and open http://192.168.4.1/'))">Open hotspot</button></div>
+<h2>Firmware</h2><div class="card"><p style="margin:0 0 4px">Running <b>%VER%</b>, built %BUILD%.</p><p class="hint" style="margin:0 0 14px">%PENDING%</p>
+<label>Install a firmware.bin (from .pio/build/paperdiy/ after pio run)</label><input type="file" id="fw" accept=".bin">
+<div class="btns" style="margin-top:12px"><button type="button" class="btn p" id="fwbtn" onclick="upload()">Install</button>%ROLLBACK%</div>
+<div id="prog" style="display:none;margin-top:14px"><div class="bar"><i id="progb"></i></div><p class="hint" id="progt"></p></div>
+<p class="hint" style="margin-top:14px">Or without a cable from PlatformIO: <b>pio run -e paperdiy-ota -t upload</b>. Either way the settings and the 24-hour history stay. A new firmware that fails early rolls back to this one by itself.</p></div>
 <script>
 function ipm(){document.getElementById("static").style.display=document.querySelector("[name=ipmode]:checked").value=="static"?"":"none"}ipm();
+function upload(){const f=document.getElementById("fw").files[0];if(!f){alert("Pick a firmware.bin first.");return}if(!confirm("Install "+f.name+" ("+Math.round(f.size/1024)+" KB)? The PaperDIY restarts afterwards."))return;
+const x=new XMLHttpRequest(),fd=new FormData(),b=document.getElementById("fwbtn"),p=document.getElementById("prog"),pb=document.getElementById("progb"),pt=document.getElementById("progt");
+fd.append("firmware",f,f.name);b.disabled=true;p.style.display="";pt.textContent="Sending…";
+x.upload.onprogress=e=>{if(e.lengthComputable){pb.style.width=Math.round(e.loaded/e.total*100)+"%";pt.textContent="Sending… "+Math.round(e.loaded/e.total*100)+"%"}};
+x.onload=()=>{if(x.status==200){pb.style.width="100%";pt.textContent="Installed. Restarting, the page reloads in 20 seconds…";setTimeout(()=>location="/settings",20000)}else{let m="";try{m=JSON.parse(x.responseText).error}catch(e){}pt.textContent="Failed: "+(m||x.status);b.disabled=false}};
+x.onerror=()=>{pt.textContent="Failed: not reachable";b.disabled=false};x.open("POST","/update");x.send(fd)}
 function tog(b){const i=b.parentNode.querySelector("input");i.type=i.type=="password"?"text":"password";b.textContent=i.type=="password"?"Show":"Hide"}
 const tzs=document.getElementById("tzsel"),tz=document.getElementById("tz");function syncTz(){tzs.value=[...tzs.options].some(o=>o.value==tz.value&&o.value)?tz.value:""}syncTz();tzs.onchange=()=>{if(tzs.value)tz.value=tzs.value};tz.oninput=syncTz;
 document.getElementById("scan").onclick=async function(){this.textContent="Scanning…";this.disabled=true;try{const r=await(await fetch("/api/scan")).json();r.sort((a,b)=>b.rssi-a.rssi);

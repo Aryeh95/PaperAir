@@ -118,6 +118,22 @@ curl -H "Authorization: Bearer <password>" http://paperair.local/api/history
 `/api/now` has the readings, advice, outdoor air and device state; `/api/history` the 24 hours at
 5-minute steps, oldest first. `/history.csv` is the same as a spreadsheet.
 
+### Updating over Wi-Fi
+
+Once it's on the wall you don't need the cable. After a `git pull`, either
+
+- `pio run -e paperdiy-ota -t upload` sends the new firmware to `paperair.local` with the web
+  password (`PAPERAIR_PASSWORD=... ` in front if you changed it on the settings page, and
+  `PAPERAIR_HOST=192.168.1.50` if mDNS doesn't resolve on your computer), or
+- build with `pio run`, then on the settings page choose `.pio/build/paperdiy/firmware.bin`
+  under **Firmware** and press Install.
+
+The settings and the 24-hour history stay. A new firmware runs as "not confirmed" until it has
+answered a web request and run for half a minute (or run for five minutes); if it crashes or
+restarts before that, the bootloader goes back to the previous one. The previous firmware stays in
+the other flash slot, and **Boot the previous firmware** on the settings page gets it back at any
+time.
+
 ### Setup mode
 
 The hotspot opens by itself when there is no Wi-Fi saved, when joining keeps failing for a

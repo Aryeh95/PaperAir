@@ -21,6 +21,8 @@
 #include "screen.h"
 #include "sensors.h"
 #include "settings.h"
+#include "ota.h"
+#include "version.h"
 #include "web.h"
 
 using air::Metric;
@@ -346,7 +348,7 @@ void setup() {
   M5.begin(cfg);
   M5.Power.M5pm1.setLedEnLevel(config::kPowerLed);  // the red LED by the power switch
   Serial.begin(115200);
-  Serial.println("PaperAir starting");
+  Serial.printf("PaperAir %s (built %s) starting\n", kVersion, kBuild);
 
   setup_display();
   store.begin("paperair");
@@ -399,5 +401,6 @@ void loop() {
     if (settings.have_wifi() && elapsed(setup_since, kSetupTimeoutMs)) leave_setup();
   }
   web_loop();
+  ota_loop();
   delay(20);
 }
