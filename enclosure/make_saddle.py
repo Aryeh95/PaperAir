@@ -33,10 +33,10 @@ SEG = 48
 # --- M5Stack's case, from its model: 120 x 67 x 6.3, buttons on one long edge, USB-C on one end ---
 CASE = (120.0, 67.0, 6.3)
 CLR = 0.3                            # around the case in the saddle
-# The board's I2S connector, from the case's outline: its cable leaves through this slot in the back
-# plate, straight out the back (photo with a ruler: 5-15 mm from the buttons' edge, on the board's
-# inner edge)
-SLOT = (53.9, 64.9, 5.7, 17.7)       # x0, x1, y0, y1
+# The I2S cable leaves its connector, passes under the display flex's fold and runs down the back
+# of the panel, 5-15 mm from the buttons' edge (photo with the case open). The slot is in the back
+# plate over the panel, just past the board's inner edge, so the cable turns straight out the back.
+SLOT = (53.9, 64.9, 5.0, 17.0)       # x0, x1, y0, y1
 # The same slot in M5Stack's coordinates (their model: buttons at -Y, USB-C at +X, front at Z -0.2)
 OEM_OFFSET = (84.94, 58.74, -0.2)    # local = oem + offset for X, Y; Z local = -(Z oem + 0.2)
 
