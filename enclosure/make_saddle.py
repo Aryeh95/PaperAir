@@ -44,9 +44,11 @@ CLR = 0.3                            # around the case in the saddle
 # The I2S cable leaves its connector, passes under the display flex's fold and runs down the back
 # of the panel, 5-15 mm from the buttons' edge (photo with the case open). The slot is in the back
 # plate over the panel, just past the board's inner edge, so the cable turns straight out the back.
-SLOT = (53.9, 64.9, 5.0, 17.0)       # x0, x1, y0, y1
+SLOT = (53.9, 64.9, 8.0, 22.0)       # x0, x1, y0, y1
 # The same slot in M5Stack's coordinates (their model: buttons at -Y, USB-C at +X, front at Z -0.2)
-OEM_OFFSET = (84.94, 58.74, -0.2)    # local = oem + offset for X, Y; Z local = -(Z oem + 0.2)
+# M5Stack's model to case coordinates: a half turn about Y. X local = 35.056 - X oem (their +X is
+# to the left seen from the front), Y local = Y oem + 58.74, Z local = -(Z oem + 0.2).
+OEM_XMAX, OEM_OFFSET = 35.056, (84.94, 58.74, -0.2)
 
 # --- Saddle ---
 WALL = 1.6
@@ -68,7 +70,7 @@ SFA_RECESS = 0.6
 # Two M3 screws hold the case to the saddle: countersunk, through the back plate from inside the
 # case (over the panel, where there is 3 mm behind the plate), into heat-set inserts in bosses on
 # the saddle's face. M3 x 5.7 inserts (4.0 mm hole, 6.7 deep), M3 x 8 countersunk screws.
-SCREWS = ((22.0, 27.0), (45.0, 27.0))   # in case coordinates: left of the cable slot, above the foot
+SCREWS = ((14.0, 27.0), (36.0, 27.0))   # in case coordinates: over the panel, left of the cable slot, clear of M5Stack's own openings in the plate
 INSERT_HOLE, INSERT_DEPTH, BOSS = 4.0, 6.7, 9.0
 
 # The foot's bottom plate: 2 mm, flush with the desk, inside the cavity's outline. Four countersunk
@@ -260,18 +262,18 @@ def build_bottom():
     return p
 
 
-def oem_back_with_slot(path):
+def oem_back_with_slot(path, screws=SCREWS):
     """M5Stack's back plate (the second-largest part of their kit model) with the cable slot."""
     kit = trimesh.load(path)
     parts = sorted(kit.split(only_watertight=False), key=lambda p: -p.volume)
     back = next(p for p in parts if p.bounds[1][2] < -2 and (p.bounds[1][0] - p.bounds[0][0]) > 100 and p.bounds[0][1] < 10)   # the assembled copy
     m = Manifold(Mesh(vert_properties=np.asarray(back.vertices, np.float32), tri_verts=np.asarray(back.faces, np.uint32)))
-    x0, x1 = SLOT[0] - OEM_OFFSET[0], SLOT[1] - OEM_OFFSET[0]
+    x0, x1 = OEM_XMAX - SLOT[1], OEM_XMAX - SLOT[0]
     y0, y1 = SLOT[2] - OEM_OFFSET[1], SLOT[3] - OEM_OFFSET[1]
     m -= box(x0, x1, y0, y1, -20, 20)
     # Screw holes with a 90 degree countersink on the inner face (the plate is z -6.5 to -5.3)
-    for x, y in SCREWS:
-        ox, oy = x - OEM_OFFSET[0], y - OEM_OFFSET[1]
+    for x, y in screws:
+        ox, oy = OEM_XMAX - x, y - OEM_OFFSET[1]
         m -= Manifold.cylinder(20, 1.7, circular_segments=SEG).translate([ox, oy, -10])
         m -= Manifold.cylinder(1.3, 1.7, 3.0, circular_segments=SEG).translate([ox, oy, -6.6])   # the head stands 0.5 proud
     return m
@@ -306,6 +308,7 @@ def main():
     ap.add_argument("--out", default="stl")
     ap.add_argument("--oem", help="M5Stack's PaperDlY_Complete_Kit.stl, to cut the slot into its back plate")
     ap.add_argument("--lip", type=float, default=2.0, help="with --oem: also make a bezel whose lip reaches this much further in (mm)")
+    ap.add_argument("--screws", help="with --oem: put the back plate's screw holes here instead, e.g. \"22,27 45,27\" (case mm), to match an older saddle")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
     s = build()
@@ -324,7 +327,8 @@ def main():
     pb = p.bounding_box()
     print(f"bottom plate: {p.volume():.0f} mm^3, {p.status()}, {pb[3] - pb[0]:.1f} x {pb[4] - pb[1]:.1f} x {pb[5] - pb[2]:.1f}")
     if args.oem:
-        b = oem_back_with_slot(args.oem)
+        screws = tuple(tuple(float(v) for v in pair.split(",")) for pair in args.screws.split()) if args.screws else SCREWS
+        b = oem_back_with_slot(args.oem, screws)
         t = to_trimesh(b)
         t.export(os.path.join(args.out, "paperdiy_back_slot.stl"))
         print(f"back plate with slot: {b.volume():.0f} mm^3, {b.status()}")
