@@ -14,9 +14,10 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 
 ## Saddle
 
-The PaperDIY in M5Stack's case drops into it from the top: a 2 mm lip in front of the bezel's bottom
-edge (the window starts 3.6 mm up, so nothing is hidden), two small ears at the ends, and a foot
-behind, leaning the whole thing back 13°. The foot is open underneath and closed by a screwed
+The PaperDIY in M5Stack's case stands on a floor between two small ears at the ends, screwed to the
+saddle through its back plate, with a foot behind, leaning the whole thing back 13°. Nothing stands
+in front of the bezel, because the bezel clips onto the back plate from the front after the plate is
+screwed down. The foot is open underneath and closed by a screwed
 bottom plate: the SEN66 goes in from below onto two posts on the plate, behind two grilles; the
 SFA40 sits in a recess behind its own grille; the breakout goes between the two beams the plate
 screws to. Rubber feet on the plate. 124 × 44 × 63 mm with the case in it.
@@ -34,13 +35,14 @@ screws to. Rubber feet on the plate. 124 × 44 × 63 mm with the case in it.
 **Fixing the case in:** two M3 × 8 countersunk screws go from inside the case through the back plate
 (the slotted one has the countersunk holes, over the panel, left of the cable slot) into the
 inserts. The heads stand about 0.5 mm proud inside, over the panel, where there's 3 mm of room.
-Press the inserts in with a soldering iron before assembly. Without them the case just
-stands in the saddle, held by its weight and the front lip.
+Press the inserts in with a soldering iron before assembly. The order matters: screw the back plate
+to the saddle first, then clip the panel, board and bezel onto it from the front.
 
 **Assembly:** press the inserts: two M3 × 5.7 into the bosses on the saddle's face, four M3 × 3
 into the beams inside the foot, from below. Plug the FPC cable into the I2S connector (the one at
 the board's inner edge, 5–15 mm from the buttons' edge) before closing M5Stack's case; the cable
-comes out through the slot. Stand the case in the saddle and screw it in. The cable lies in the
+comes out through the slot. Screw the back plate to the saddle, then clip the rest of the case onto
+it from the front. The cable lies in the
 groove in the saddle's face behind the case and enters the foot through the opening at the groove's
 end. Turn the whole thing over to load the foot: stick the SFA40 into its recess (can over the
 grille) and the breakout to the back wall between the beams, wire them as in [Wiring](#wiring),

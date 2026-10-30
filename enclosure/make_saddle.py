@@ -52,7 +52,9 @@ OEM_XMAX, OEM_OFFSET = 35.056, (84.94, 58.74, -0.2)
 
 # --- Saddle ---
 WALL = 1.6
-LIP_T, LIP_H = 1.2, 2.0              # the front lip: thick, and how far up the bezel's face (the window starts 3.6 up)
+FRONT = 0.0                          # the floor's front edge: flush with the bezel's face. Nothing may stand in front of
+                                     # the bezel, because it clips onto the back plate from the front after the plate is
+                                     # screwed to the saddle
 SIDE_H = 8.0                         # the side ears, up from the case's bottom edge
 FLOOR = 2.4                          # under the case at the front (rubber feet sit in it)
 TILT = math.radians(13)
@@ -160,11 +162,10 @@ def build():
     upper = prism(rr(X0, X1, step_y - rise, step_y - rise + 0.5, 0.2), zf, T_THIN)
     s = Manifold.batch_hull([lower, upper])
     s += box(SLOT[0] - 4, SLOT[1] + 4, SLOT[2] - 2, step_y, zf, T_THIN)
-    # The floor under the case, the front lip and the side ears
-    s += box(X0, X1, CASE[1] + CLR, Y1 + 30, -CLR - LIP_T, T_FOOT)
-    s += box(X0, X1, CASE[1] - LIP_H, Y1 + 30, -CLR - LIP_T, -CLR)
+    # The floor under the case and the side ears (no lip in front of the bezel: see FRONT)
+    s += box(X0, X1, CASE[1] + CLR, Y1 + 30, FRONT, T_FOOT)
     for x0 in (X0, X1 - WALL):
-        s += box(x0, x0 + WALL, CASE[1] - SIDE_H, Y1 + 30, -CLR - LIP_T, zf + WALL)
+        s += box(x0, x0 + WALL, CASE[1] - SIDE_H, Y1 + 30, FRONT, zf + WALL)
     # The cavity, with the same shoulder inside
     step_i = SEN_Y0() - 0.3
     inner = cavity()
