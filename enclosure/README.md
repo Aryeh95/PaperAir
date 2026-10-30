@@ -14,10 +14,12 @@ Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's but
 
 ## Saddle
 
-The PaperDIY in M5Stack's case stands on a floor between two small ears at the ends, screwed to the
-saddle through its back plate, with a foot behind, leaning the whole thing back 13°. Nothing stands
-in front of the bezel, because the bezel clips onto the back plate from the front after the plate is
-screwed down. The foot is open underneath and closed by a screwed
+The PaperDIY in M5Stack's case, assembled the normal way, slides down into two rails at the
+saddle's ends and leans back 13° against it, with a foot behind. Each rail is an end wall and a
+2.5 mm flange over the bezel's face, 25 mm up from the bottom: the flanges stop the case tipping,
+the end walls stop it sliding, gravity does the rest. Nothing screws the case to the saddle. The
+left rail has a slot for the power button's cap (the button still works through it); the USB-C is
+above the rails. The foot is open underneath and closed by a screwed
 bottom plate: the SEN66 goes in from below onto two posts on the plate, behind two grilles; the
 SFA40 sits in a recess behind its own grille; the breakout goes between the two beams the plate
 screws to. Rubber feet on the plate. 124 × 44 × 63 mm with the case in it.
@@ -28,23 +30,16 @@ screws to. Rubber feet on the plate. 124 × 44 × 63 mm with the case in it.
 |---|---|---|
 | M5Stack's three button caps | As M5Stack's | From [M5_Hardware](https://github.com/m5stack/M5_Hardware/tree/master/Products/K159-B_PaperDIY_Complete_Kit/Structures) (MIT licence, © M5Stack), unchanged |
 | M5Stack's bezel, with a wider lip | Face down | `make_saddle.py --oem` also writes `paperdiy_bezel_lip.stl`: the lip reaches 2 mm further in all round, so the panel's black border stays covered. 18 pixels of the picture's margin go under it; the layout keeps 40 clear. The stock bezel works too, with a thin line of border showing. |
-| M5Stack's back plate, with a slot | As M5Stack's | `python make_saddle.py --out stl --oem PaperDlY_Complete_Kit.stl` cuts an 11 × 14 mm slot over the board's I2S connector, so the FPC cable leaves straight out the back, and the two screw holes. `--screws "22,27 45,27"` puts the holes where an earlier saddle's inserts are. |
-| `stl/saddle.stl` | Standing on its bottom edges, as exported | No supports; the two beams inside the foot bridge 25 mm. Two bosses on its face take M3 × 5.7 heat-set inserts (4.0 mm holes); the beams take four M3 × 3 inserts from below. |
+| M5Stack's back plate, with a slot | As M5Stack's | `python make_saddle.py --out stl --oem PaperDlY_Complete_Kit.stl` cuts an 11 × 14 mm slot over the board's I2S connector, so the FPC cable leaves straight out the back |
+| `stl/saddle.stl` | Standing on its bottom edges, as exported | Supports under the two beams inside the foot (they bridge it 2 mm up; keep the insert holes clear of support). The beams take four M3 × 3 heat-set inserts (4.0 mm holes) from below. |
 | `stl/saddle_bottom.stl` | As exported, posts up | The foot's bottom plate: four M3 × 6 (or 8) countersunk screws into the beams. Pockets for four 10 mm rubber feet. |
 
-**Fixing the case in:** two M3 × 8 countersunk screws go from inside the case through the back plate
-(the slotted one has the countersunk holes, over the panel, left of the cable slot) into the
-inserts. The heads stand about 0.5 mm proud inside, over the panel, where there's 3 mm of room.
-Press the inserts in with a soldering iron before assembly. The order matters: screw the back plate
-to the saddle first, then clip the panel, board and bezel onto it from the front.
-
-**Assembly:** press the inserts: two M3 × 5.7 into the bosses on the saddle's face, four M3 × 3
-into the beams inside the foot, from below. Plug the FPC cable into the I2S connector (the one at
-the board's inner edge, 5–15 mm from the buttons' edge) before closing M5Stack's case; the cable
-comes out through the slot. Screw the back plate to the saddle, then clip the rest of the case onto
-it from the front. The cable lies in the
-groove in the saddle's face behind the case and enters the foot through the opening at the groove's
-end. Turn the whole thing over to load the foot: stick the SFA40 into its recess (can over the
+**Assembly:** press the four M3 × 3 inserts into the beams inside the foot, from below. Build
+M5Stack's case the way they do, bezel face down: caps in, panel in, board on, with the FPC cable
+plugged into the I2S connector (the one at the board's inner edge, 5–15 mm from the buttons' edge)
+and led out through the slot, then the back plate clipped on. Slide the case down into the rails,
+buttons up, with the cable lying in the groove in the saddle's face; it enters the foot through the
+opening at the groove's end. Turn the whole thing over to load the foot: stick the SFA40 into its recess (can over the
 grille) and the breakout to the back wall between the beams, wire them as in [Wiring](#wiring),
 then lay the SEN66 in between the end fins, grilles toward the back wall, and screw the bottom
 plate on; its two posts hold the SEN66 up against the ledge. Stick the rubber feet in the plate's

@@ -9,13 +9,15 @@ cable can leave the case. Pass M5Stack's STL with --oem to cut it; nothing of th
 
 Parts:
   saddle.stl              the saddle, open underneath. Printed standing on its bottom edges, as
-                          exported, no supports (the two screw beams bridge the foot, 32 mm).
+                          exported; supports under the two screw beams (they bridge the foot 2 mm
+                          up) and under the overhangs the slicer finds. The assembled case slides
+                          down into the two end rails; nothing screws the case to the saddle.
   saddle_bottom.stl       the foot's bottom plate: the sensors go in through here. Four M3
                           countersunk screws into M3 x 3 heat-set inserts in the beams. Carries the
                           two posts the SEN66 rests on and the pockets for the rubber feet. Printed
                           as exported, posts up.
-  paperdiy_back_slot.stl  M5Stack's back plate with the slot and two countersunk M3 holes (only
-                          with --oem). Printed as M5Stack's.
+  paperdiy_back_slot.stl  M5Stack's back plate with the cable slot (only with --oem). Printed as
+                          M5Stack's.
   paperdiy_bezel_lip.stl  M5Stack's bezel with its lip 2 mm wider all round (--lip), so the panel's
                           black border stays covered. Printed face down, as exported.
 
@@ -55,7 +57,14 @@ WALL = 1.6
 FRONT = 0.0                          # the floor's front edge: flush with the bezel's face. Nothing may stand in front of
                                      # the bezel, because it clips onto the back plate from the front after the plate is
                                      # screwed to the saddle
-SIDE_H = 8.0                         # the side ears, up from the case's bottom edge
+# The case is held by two rails at its ends: an end wall and a flange over the bezel's face, up
+# from the floor. The assembled case slides down into them from the top; gravity and the 13 degree
+# lean keep it against the saddle, the flanges stop it tipping, the end walls stop it sliding.
+# The left end (seen from the front) has the USB-C high up, above the rails, and the power
+# button's cap low down, which protrudes 1.2 mm: a slot down the left end wall clears it.
+RAIL_H = 25.0                        # up from the case's bottom edge
+FLANGE_W, FLANGE_T = 2.5, 1.2        # over the bezel's face at each end (its frame is 3.5 wide at the right end)
+POWER_CAP = (62.5, 1.5, 5.5)         # y1, z0, z1 of the slot for the power button's cap: open from the rail's top down to y1, so the cap can slide in
 FLOOR = 2.4                          # under the case at the front (rubber feet sit in it)
 TILT = math.radians(13)
 T_THIN = CASE[2] + CLR + 2.4         # the thin part behind the case, above the foot: carries the cable groove
@@ -69,11 +78,7 @@ T_FOOT = SEN_Z0 + SEN[2] + 0.2 + WALL
 SFA = (17.3, 15.2, 3.6)              # SFA40 carrier board, 16.9 x 14.8 x 3.4 measured, plus clearance
 SFA_RECESS = 0.6
 
-# Two M3 screws hold the case to the saddle: countersunk, through the back plate from inside the
-# case (over the panel, where there is 3 mm behind the plate), into heat-set inserts in bosses on
-# the saddle's face. M3 x 5.7 inserts (4.0 mm hole, 6.7 deep), M3 x 8 countersunk screws.
-SCREWS = ((14.0, 27.0), (36.0, 27.0))   # in case coordinates: over the panel, left of the cable slot, clear of M5Stack's own openings in the plate
-INSERT_HOLE, INSERT_DEPTH, BOSS = 4.0, 6.7, 9.0
+INSERT_HOLE = 4.0                    # for M3 heat-set inserts
 
 # The foot's bottom plate: 2 mm, flush with the desk, inside the cavity's outline. Four countersunk
 # M3 screws go up into M3 x 3 inserts (4.0 mm hole) in two beams that bridge the foot front to back,
@@ -162,21 +167,25 @@ def build():
     upper = prism(rr(X0, X1, step_y - rise, step_y - rise + 0.5, 0.2), zf, T_THIN)
     s = Manifold.batch_hull([lower, upper])
     s += box(SLOT[0] - 4, SLOT[1] + 4, SLOT[2] - 2, step_y, zf, T_THIN)
-    # The floor under the case and the side ears (no lip in front of the bezel: see FRONT)
+    # The floor under the case (its front edge flush with the bezel's face), and the two rails: an
+    # end wall each, and a flange in front of the bezel's face at the end
     s += box(X0, X1, CASE[1] + CLR, Y1 + 30, FRONT, T_FOOT)
-    for x0 in (X0, X1 - WALL):
-        s += box(x0, x0 + WALL, CASE[1] - SIDE_H, Y1 + 30, FRONT, zf + WALL)
+    z_flange = -CLR - FLANGE_T
+    y_rail = CASE[1] - RAIL_H
+    s += box(X0, X0 + WALL, y_rail, Y1 + 30, z_flange, zf + WALL)                  # left end wall
+    s += box(X1 - WALL, X1, y_rail, Y1 + 30, z_flange, zf + WALL)                  # right end wall
+    s += box(X0, FLANGE_W, y_rail, CASE[1] + CLR + 0.01, z_flange, -CLR)           # left flange
+    s += box(CASE[0] - FLANGE_W, X1, y_rail, CASE[1] + CLR + 0.01, z_flange, -CLR)  # right flange
+    # A lead-in on the flanges' top inner edge, so the case finds its way in
+    for xa, xb in ((X0 - 1, FLANGE_W + 1), (CASE[0] - FLANGE_W - 1, X1 + 1)):
+        s -= Manifold.batch_hull([box(xa, xb, y_rail - 1, y_rail + 0.01, -CLR - 1, -CLR + 0.01),
+                                  box(xa, xb, y_rail + 1, y_rail + 1.01, -CLR - 0.01, -CLR + 0.01)])
+    # The slot in the left end wall for the power button's cap, from the top of the rail down
+    s -= box(X0 - 1, X0 + WALL + 1, y_rail - 1, POWER_CAP[0], POWER_CAP[1], POWER_CAP[2])
     # The cavity, with the same shoulder inside
     step_i = SEN_Y0() - 0.3
     inner = cavity()
     s -= inner                                           # open underneath: the bottom plate closes it
-    # Bosses for the screw inserts, inside the cavity behind the face, with a 45 degree top so
-    # they print standing; the insert holes go in from the face
-    for x, y in SCREWS:
-        boss = Manifold.batch_hull([box(x - BOSS / 2, x + BOSS / 2, y - BOSS / 2, y + BOSS / 2, zf, zf + WALL + INSERT_DEPTH + 1.5),
-                                    box(x - BOSS / 2, x + BOSS / 2, y - BOSS / 2 - (WALL + INSERT_DEPTH + 1.5), y - BOSS / 2, zf, zf + 0.01)])
-        s += boss
-        s -= Manifold.cylinder(INSERT_DEPTH + 0.5, INSERT_HOLE / 2, circular_segments=SEG).translate([x, y, zf - 0.01])
     # The cable: a groove in the face behind the case, from the slot down, and an opening into the
     # cavity through the front wall
     s -= box(SLOT[0] - 1, SLOT[1] + 1, SLOT[2] - 1, step_i + 4, zf - 0.01, zf + GROOVE)
@@ -263,7 +272,7 @@ def build_bottom():
     return p
 
 
-def oem_back_with_slot(path, screws=SCREWS):
+def oem_back_with_slot(path):
     """M5Stack's back plate (the second-largest part of their kit model) with the cable slot."""
     kit = trimesh.load(path)
     parts = sorted(kit.split(only_watertight=False), key=lambda p: -p.volume)
@@ -272,11 +281,6 @@ def oem_back_with_slot(path, screws=SCREWS):
     x0, x1 = OEM_XMAX - SLOT[1], OEM_XMAX - SLOT[0]
     y0, y1 = SLOT[2] - OEM_OFFSET[1], SLOT[3] - OEM_OFFSET[1]
     m -= box(x0, x1, y0, y1, -20, 20)
-    # Screw holes with a 90 degree countersink on the inner face (the plate is z -6.5 to -5.3)
-    for x, y in screws:
-        ox, oy = OEM_XMAX - x, y - OEM_OFFSET[1]
-        m -= Manifold.cylinder(20, 1.7, circular_segments=SEG).translate([ox, oy, -10])
-        m -= Manifold.cylinder(1.3, 1.7, 3.0, circular_segments=SEG).translate([ox, oy, -6.6])   # the head stands 0.5 proud
     return m
 
 
@@ -309,7 +313,6 @@ def main():
     ap.add_argument("--out", default="stl")
     ap.add_argument("--oem", help="M5Stack's PaperDlY_Complete_Kit.stl, to cut the slot into its back plate")
     ap.add_argument("--lip", type=float, default=2.0, help="with --oem: also make a bezel whose lip reaches this much further in (mm)")
-    ap.add_argument("--screws", help="with --oem: put the back plate's screw holes here instead, e.g. \"22,27 45,27\" (case mm), to match an older saddle")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
     s = build()
@@ -328,8 +331,7 @@ def main():
     pb = p.bounding_box()
     print(f"bottom plate: {p.volume():.0f} mm^3, {p.status()}, {pb[3] - pb[0]:.1f} x {pb[4] - pb[1]:.1f} x {pb[5] - pb[2]:.1f}")
     if args.oem:
-        screws = tuple(tuple(float(v) for v in pair.split(",")) for pair in args.screws.split()) if args.screws else SCREWS
-        b = oem_back_with_slot(args.oem, screws)
+        b = oem_back_with_slot(args.oem)
         t = to_trimesh(b)
         t.export(os.path.join(args.out, "paperdiy_back_slot.stl"))
         print(f"back plate with slot: {b.volume():.0f} mm^3, {b.status()}")
