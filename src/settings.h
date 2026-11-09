@@ -16,6 +16,8 @@ struct Settings {
   bool fahrenheit = true;
   bool clock_24h = false;
   String time_zone;
+  String mqtt_host, mqtt_user, mqtt_password;   // Home Assistant's MQTT broker; empty host = off
+  int mqtt_port = 1883;
 
   bool have_wifi() const { return ssid.length() > 0; }
   bool have_static_ip() const { return static_ip.length() > 0; }

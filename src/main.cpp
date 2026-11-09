@@ -21,6 +21,7 @@
 #include "screen.h"
 #include "sensors.h"
 #include "settings.h"
+#include "mqtt.h"
 #include "ota.h"
 #include "version.h"
 #include "web.h"
@@ -384,9 +385,16 @@ void setup() {
       join_wifi();
       setup_since = millis();
     }
+    mqtt_reconfigure();
     redraw_now = true;
   };
   web_begin(hooks);
+
+  MqttHooks mq;
+  mq.data = screen_data;
+  mq.refresh = hooks.refresh;
+  mq.toggle_page = hooks.toggle_page;
+  mqtt_begin(mq);
 }
 
 void loop() {
@@ -402,5 +410,6 @@ void loop() {
   }
   web_loop();
   ota_loop();
+  mqtt_loop();
   delay(20);
 }

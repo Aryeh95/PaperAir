@@ -118,6 +118,26 @@ curl -H "Authorization: Bearer <password>" http://paperair.local/api/history
 `/api/now` has the readings, advice, outdoor air and device state; `/api/history` the 24 hours at
 5-minute steps, oldest first. `/history.csv` is the same as a spreadsheet.
 
+### Home Assistant
+
+PaperAir talks to Home Assistant over MQTT and announces itself, so it shows up as a device with no
+YAML to write:
+
+1. In Home Assistant, install the **Mosquitto broker** add-on and add the **MQTT** integration.
+2. Make a Home Assistant user for PaperAir (Settings → People → Users), for example `paperair`.
+   Mosquitto accepts Home Assistant users as broker logins.
+3. On PaperAir's settings page, under **Home Assistant**, enter Home Assistant's IP address as the
+   broker, port 1883, and that user and password. Save.
+
+Within a few seconds a **PaperAir** device appears under the MQTT integration with CO₂, PM1, PM2.5,
+PM10, VOC and NOx index, formaldehyde (with an SFA40), temperature, humidity, indoor and outdoor
+AQI, outdoor PM2.5, the advice headline, an **Air status** of `fresh` / `fine` / `act` / `urgent`
+for automations, and the Wi-Fi signal. Three buttons refresh the screen, switch its page and
+restart it. Readings are sent every 30 seconds; if PaperAir goes offline its sensors show as
+unavailable. The device card on the web page shows whether it is connected.
+
+The JSON API below still works too, for anything that would rather poll.
+
 ### Updating over Wi-Fi
 
 Once it's on the wall you don't need the cable. After a `git pull`, either

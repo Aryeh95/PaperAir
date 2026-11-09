@@ -23,6 +23,12 @@
 #ifndef WEB_PASSWORD
 #define WEB_PASSWORD ""
 #endif
+#ifndef MQTT_HOST
+#define MQTT_HOST ""
+#define MQTT_PORT 1883
+#define MQTT_USER ""
+#define MQTT_PASSWORD ""
+#endif
 
 Settings settings;
 
@@ -50,6 +56,10 @@ void settings_load() {
   settings.fahrenheit = p.getBool("fahr", config::kFahrenheit);
   settings.clock_24h = p.getBool("clk24", config::kClock24h);
   settings.time_zone = p.getString("tz", config::kTimeZone);
+  settings.mqtt_host = p.getString("mq_host", MQTT_HOST);
+  settings.mqtt_port = p.getInt("mq_port", MQTT_PORT);
+  settings.mqtt_user = p.getString("mq_user", MQTT_USER);
+  settings.mqtt_password = p.getString("mq_pass", MQTT_PASSWORD);
   p.end();
 }
 
@@ -73,5 +83,9 @@ void settings_save() {
   p.putBool("fahr", settings.fahrenheit);
   p.putBool("clk24", settings.clock_24h);
   p.putString("tz", settings.time_zone);
+  p.putString("mq_host", settings.mqtt_host);
+  p.putInt("mq_port", settings.mqtt_port);
+  p.putString("mq_user", settings.mqtt_user);
+  p.putString("mq_pass", settings.mqtt_password);
   p.end();
 }

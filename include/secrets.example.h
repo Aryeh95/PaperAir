@@ -19,6 +19,12 @@
 #define AIRNOW_API_KEY ""
 #define AIRNOW_ZIP_CODE ""
 
+// Home Assistant over MQTT (the Mosquitto add-on): its address and a login. Empty host = off.
+#define MQTT_HOST ""
+#define MQTT_PORT 1883
+#define MQTT_USER ""
+#define MQTT_PASSWORD ""
+
 // Password for the web page (http://paperair.local/). Empty = no login.
 // All of these can also be changed later on the device's settings page.
 #define WEB_PASSWORD ""

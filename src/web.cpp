@@ -14,6 +14,7 @@
 #include "aqi.h"
 #include "config.h"
 #include "ota.h"
+#include "mqtt.h"
 #include "settings.h"
 #include "version.h"
 #include "web_page.h"
@@ -170,6 +171,7 @@ void handle_now() {
   dev["uptime"] = uptime();
   dev["heap"] = String(ESP.getFreeHeap() / 1024) + " KB";
   dev["version"] = kVersion;
+  dev["mqtt"] = mqtt_status();
   dev["build"] = kBuild;
   dev["pending"] = ota_pending();
   dev["sen66"] = hooks.sen66_started() ? "reading, " + ago(hooks.sensor_age_ms()) : "not found";
@@ -293,6 +295,11 @@ void handle_settings_page() {
   page.replace("%H24_SEL%", settings.clock_24h ? "checked" : "");
   page.replace("%T_OFF%", String(settings.temperature_offset_c, 1));
   page.replace("%TZ%", html_escape(settings.time_zone));
+  page.replace("%MQ_HOST%", html_escape(settings.mqtt_host));
+  page.replace("%MQ_PORT%", String(settings.mqtt_port));
+  page.replace("%MQ_USER%", html_escape(settings.mqtt_user));
+  page.replace("%MQ_PH%", settings.mqtt_password.length() ? "(unchanged)" : "");
+  page.replace("%MQ_STATUS%", html_escape(mqtt_status()));
   page.replace("%WEB_PH%", password_set() ? "(unchanged)" : "none set, the page is open to the network");
   page.replace("%VER%", kVersion);
   page.replace("%BUILD%", kBuild);
@@ -344,6 +351,18 @@ void handle_settings_post() {
   String tz = server.arg("tz");
   tz.trim();
   if (tz.length()) settings.time_zone = tz;
+  {
+    String host = server.arg("mq_host"), user = server.arg("mq_user");
+    host.trim();
+    user.trim();
+    settings.mqtt_host = host;
+    const int port = server.arg("mq_port").toInt();
+    settings.mqtt_port = port > 0 && port < 65536 ? port : 1883;
+    settings.mqtt_user = user;
+    const String mp = server.arg("mq_pass");
+    if (mp == " ") settings.mqtt_password = "";
+    else if (mp.length()) settings.mqtt_password = mp;
+  }
   const String pw = server.arg("web_pw");
   if (pw == " ") {
     settings.web_password = "";
