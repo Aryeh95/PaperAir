@@ -62,9 +62,11 @@ FRONT = 0.0                          # the floor's front edge: flush with the be
 # from the floor. The assembled case slides down into them from the top; gravity and the 13 degree
 # lean keep it against the saddle, the flanges stop it tipping, the end walls stop it sliding.
 # The left end (seen from the front) has the USB-C high up, above the rails, and the power
-# button's cap low down, which protrudes 1.2 mm: a slot down the left end wall clears it.
+# button's cap low down, which protrudes 1.2 mm: a groove down the inside of the left end wall
+# clears it. The groove does not go through, so the wall stays in one piece (the button is covered).
 RAIL_H = 25.0                        # up from the case's bottom edge
-FLANGE_W, FLANGE_T = 2.5, 1.2        # over the bezel's face at each end (its frame is 3.5 wide at the right end)
+FLANGE_W, FLANGE_T = 2.5, 1.6        # over the bezel's face at each end (its frame is 3.5 wide at the right end)
+RAIL_EXTRA = 1.6                     # the rails' end walls are this much thicker than the foot's, outward: 3.2 mm in all
 POWER_CAP = (62.5, 1.5, 5.5)         # y1, z0, z1 of the slot for the power button's cap: open from the rail's top down to y1, so the cap can slide in
 FLOOR = 2.4                          # under the case at the front (rubber feet sit in it)
 TILT = math.radians(13)
@@ -174,16 +176,17 @@ def build():
     s += box(X0, X1, CASE[1] + CLR, Y1 + 30, FRONT, T_FOOT)
     z_flange = -CLR - FLANGE_T
     y_rail = CASE[1] - RAIL_H
-    s += box(X0, X0 + WALL, y_rail, Y1 + 30, z_flange, zf + WALL)                  # left end wall
-    s += box(X1 - WALL, X1, y_rail, Y1 + 30, z_flange, zf + WALL)                  # right end wall
-    s += box(X0, FLANGE_W, y_rail, Y1 + 30, z_flange, -CLR)                        # left flange, down to the bed
-    s += box(CASE[0] - FLANGE_W, X1, y_rail, Y1 + 30, z_flange, -CLR)              # right flange
+    xl, xr = X0 - RAIL_EXTRA, X1 + RAIL_EXTRA
+    s += box(xl, X0 + WALL, y_rail, Y1 + 30, z_flange, zf + WALL)                  # left end wall
+    s += box(X1 - WALL, xr, y_rail, Y1 + 30, z_flange, zf + WALL)                  # right end wall
+    s += box(xl, FLANGE_W, y_rail, Y1 + 30, z_flange, -CLR)                        # left flange, down to the bed
+    s += box(CASE[0] - FLANGE_W, xr, y_rail, Y1 + 30, z_flange, -CLR)              # right flange
     # A lead-in on the flanges' top inner edge, so the case finds its way in
-    for xa, xb in ((X0 - 1, FLANGE_W + 1), (CASE[0] - FLANGE_W - 1, X1 + 1)):
+    for xa, xb in ((X0 + WALL, FLANGE_W + 1), (CASE[0] - FLANGE_W - 1, X1 - WALL)):
         s -= Manifold.batch_hull([box(xa, xb, y_rail - 1, y_rail + 0.01, -CLR - 1, -CLR + 0.01),
                                   box(xa, xb, y_rail + 1, y_rail + 1.01, -CLR - 0.01, -CLR + 0.01)])
-    # The slot in the left end wall for the power button's cap, from the top of the rail down
-    s -= box(X0 - 1, X0 + WALL + 1, y_rail - 1, POWER_CAP[0], POWER_CAP[1], POWER_CAP[2])
+    # The groove inside the left end wall for the power button's cap, from the top of the rail down
+    s -= box(X0, X0 + WALL + 1, y_rail - 1, POWER_CAP[0], POWER_CAP[1], POWER_CAP[2])
     # The cavity, with the same shoulder inside
     step_i = SEN_Y0() - 0.3
     inner = cavity()

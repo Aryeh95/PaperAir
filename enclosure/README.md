@@ -18,11 +18,11 @@ The PaperDIY in M5Stack's case, assembled the normal way, slides down into two r
 saddle's ends and leans back 13° against it, with a foot behind. Each rail is an end wall and a
 2.5 mm flange over the bezel's face, 25 mm up from the bottom: the flanges stop the case tipping,
 the end walls stop it sliding, gravity does the rest. Nothing screws the case to the saddle. The
-left rail has a slot for the power button's cap (the button still works through it); the USB-C is
-above the rails. The foot is open underneath and closed by a bottom plate screwed on under the
+rails' end walls are 3.2 mm thick. The left one has a groove inside for the power button's cap,
+which it covers (the firmware doesn't use that button); the USB-C is above the rails. The foot is open underneath and closed by a bottom plate screwed on under the
 whole saddle: the SEN66 goes in from below onto two posts on the plate, behind two grilles; the
 SFA40 sits in a recess behind its own grille; the breakout goes between the four bosses the plate
-screws to. Stick-on rubber feet under the plate. 124 × 44 × 63 mm with the case in it.
+screws to. Stick-on rubber feet under the plate. 127 × 44 × 65 mm with the case in it.
 
 ![Exploded: the case front to back, and the saddle from behind with the foot's contents drawn out](render_saddle.png)
 
