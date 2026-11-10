@@ -9,13 +9,14 @@ cable can leave the case. Pass M5Stack's STL with --oem to cut it; nothing of th
 
 Parts:
   saddle.stl              the saddle, open underneath. Printed standing on its bottom edges, as
-                          exported; supports under the two screw beams (they bridge the foot 2 mm
-                          up) and under the overhangs the slicer finds. The assembled case slides
-                          down into the two end rails; nothing screws the case to the saddle.
-  saddle_bottom.stl       the foot's bottom plate: the sensors go in through here. Four M3
-                          countersunk screws into M3 x 3 heat-set inserts in the beams. Carries the
-                          two posts the SEN66 rests on and the pockets for the rubber feet. Printed
-                          as exported, posts up.
+                          exported, without supports: every part of it stands on the bed or grows
+                          from a wall at 45 degrees or steeper. The assembled case slides down into
+                          the two end rails; nothing screws the case to the saddle. The cable
+                          window in its face is straight behind the back plate's slot.
+  saddle_bottom.stl       the bottom plate, under the whole saddle: the sensors go in through
+                          here. Four M3 countersunk screws into M3 x 3 heat-set inserts in the
+                          bosses. Carries the two posts the SEN66 rests on. Printed as exported,
+                          posts up, without supports.
   paperdiy_back_slot.stl  M5Stack's back plate with the cable slot (only with --oem). Printed as
                           M5Stack's.
   paperdiy_bezel_lip.stl  M5Stack's bezel with its lip 2 mm wider all round (--lip), so the panel's
@@ -67,8 +68,8 @@ FLANGE_W, FLANGE_T = 2.5, 1.2        # over the bezel's face at each end (its fr
 POWER_CAP = (62.5, 1.5, 5.5)         # y1, z0, z1 of the slot for the power button's cap: open from the rail's top down to y1, so the cap can slide in
 FLOOR = 2.4                          # under the case at the front (rubber feet sit in it)
 TILT = math.radians(13)
-T_THIN = CASE[2] + CLR + 2.4         # the thin part behind the case, above the foot: carries the cable groove
-GROOVE = 1.0                         # the cable groove in the thin part's face, covered by the case's back plate
+T_THIN = CASE[2] + CLR + 2.4         # the thin part behind the case, at the top of the foot's shoulder
+CABLE_BELOW = 4.0                    # the cable window in the face reaches this far below the back plate's slot
 
 # --- Foot ---
 SEN = (55.0, 26.0, 21.2)             # SEN66: length (X), width (Y), depth (Z)
@@ -80,14 +81,15 @@ SFA_RECESS = 0.6
 
 INSERT_HOLE = 4.0                    # for M3 heat-set inserts
 
-# The foot's bottom plate: 2 mm, flush with the desk, inside the cavity's outline. Four countersunk
-# M3 screws go up into M3 x 3 inserts (4.0 mm hole) in two beams that bridge the foot front to back,
-# in the free space between the SEN66 and the SFA40, 12 mm tall, their undersides 2 mm up.
+# The bottom plate: 2 mm, screwed on under the whole saddle (everything of the saddle stands on the
+# printer's bed, so it prints without supports). Four countersunk M3 screws go up into M3 x 3
+# inserts (4.0 mm holes) in four bosses that stand on the bed against the front and back walls, in
+# the free space between the SEN66 and the SFA40.
 PLATE = 2.0
-PLATE_CLR = 0.2
-BEAM_X = (66.0, 97.5)                # beam centres, 7 wide: between the SEN66 (ends at 61) and the SFA40 (starts at 101.5)
-BEAM_W, BEAM_H = 7.0, 12.0
-BOTTOM_INSERT_DEPTH = 4.0            # M3 x 3 inserts, with a little room under them
+PLATE_CLR = 0.3                      # the plate's outline, in from the saddle's footprint
+BEAM_X = (66.0, 97.5)                # boss centres, 7 wide: between the SEN66 (ends at 61) and the SFA40 (starts at 101.5)
+BEAM_W, BOSS_D, BOSS_H = 7.0, 9.0, 10.0
+BOTTOM_INSERT_DEPTH = 4.0            # M3 x 3 inserts, with a little room above them
 BOTTOM_SCREW_IN = 4.5                # the holes, in from the front and back walls
 
 X0, X1 = -CLR - WALL, CASE[0] + CLR + WALL
@@ -174,8 +176,8 @@ def build():
     y_rail = CASE[1] - RAIL_H
     s += box(X0, X0 + WALL, y_rail, Y1 + 30, z_flange, zf + WALL)                  # left end wall
     s += box(X1 - WALL, X1, y_rail, Y1 + 30, z_flange, zf + WALL)                  # right end wall
-    s += box(X0, FLANGE_W, y_rail, CASE[1] + CLR + 0.01, z_flange, -CLR)           # left flange
-    s += box(CASE[0] - FLANGE_W, X1, y_rail, CASE[1] + CLR + 0.01, z_flange, -CLR)  # right flange
+    s += box(X0, FLANGE_W, y_rail, Y1 + 30, z_flange, -CLR)                        # left flange, down to the bed
+    s += box(CASE[0] - FLANGE_W, X1, y_rail, Y1 + 30, z_flange, -CLR)              # right flange
     # A lead-in on the flanges' top inner edge, so the case finds its way in
     for xa, xb in ((X0 - 1, FLANGE_W + 1), (CASE[0] - FLANGE_W - 1, X1 + 1)):
         s -= Manifold.batch_hull([box(xa, xb, y_rail - 1, y_rail + 0.01, -CLR - 1, -CLR + 0.01),
@@ -186,10 +188,11 @@ def build():
     step_i = SEN_Y0() - 0.3
     inner = cavity()
     s -= inner                                           # open underneath: the bottom plate closes it
-    # The cable: a groove in the face behind the case, from the slot down, and an opening into the
-    # cavity through the front wall
-    s -= box(SLOT[0] - 1, SLOT[1] + 1, SLOT[2] - 1, step_i + 4, zf - 0.01, zf + GROOVE)
-    s -= box(SLOT[0] - 1, SLOT[1] + 1, step_i - 4, step_i + 6, zf - 0.01, zf + WALL + 1)
+    # The cable: a window through the face straight behind the back plate's slot, into the cavity
+    # (which reaches up behind it under the shoulder). Its top slopes at 45 degrees, to print.
+    xa, xb, ya, yb = SLOT[0] - 1, SLOT[1] + 1, SLOT[2], SLOT[3] + CABLE_BELOW
+    s -= Manifold.batch_hull([box(xa, xb, ya, yb, zf - 0.01, zf),
+                              box(xa, xb, ya + WALL + 0.11, yb, zf + WALL + 0.09, zf + WALL + 0.1)])
     # SEN66: inlet grille at its left end, fan outlet in the middle, fins that hold it
     x0, x1, y0, y1, z0, z1 = sensor_box()
     s -= grille([x0 + 3.2 + 1.0, x0 + 6.7, x0 + 10.2 - 1.0], y0 + 2.8, y1 - 2.8)
@@ -202,23 +205,28 @@ def build():
             slots.append(grille([x], yc - h, yc + h))
     s -= union(slots)
     zw = T_FOOT - WALL + 0.5
-    fins = [box(X0 + WALL - 0.5, x0 + 0.15, y0 + 14, y1 + 6, zf + 1, zw),
-            box(x1 - 0.15, x1 + 1.85, y0 + 14, y1 + 6, zf + 1, zw)]
+    fins = [box(X0 + WALL - 0.5, x0 + 0.15, y0 + 14, Y1 + 40, zf + 1, zw),
+            box(x1 - 0.15, x1 + 1.85, y0 + 14, Y1 + 40, zf + 1, zw)]
     ledge = Manifold.batch_hull([box(x0 + 3, x1 - 3, y0 - 2.5, y0 + 0.15, zw - 0.01, zw),   # along the back wall, above it
                                  box(x0 + 3, x1 - 3, y0 - 2.5, y0 - 2.35, zw - 2.65, zw)])
-    s += above_desk(union(fins) + ledge, FLOOR - 0.1)
+    s += above_desk(union(fins) + ledge, 0)              # the fins stand on the bed
     # SFA40: a shallow recess in the back wall and its grille
     sx0, sx1, sy0, sy1, sz0, sz1 = sfa_box()
-    s -= box(sx0, sx1, sy0, sy1, sz1 - 0.01, sz1 + SFA_RECESS)
+    s -= Manifold.batch_hull([box(sx0, sx1, sy0, sy1, sz1 - 0.01, sz1),                  # its top edge at 45 degrees
+                              box(sx0, sx1, sy0 + SFA_RECESS, sy1, sz1 + SFA_RECESS - 0.01, sz1 + SFA_RECESS)])
     s -= grille([sx0 + 4 + 2.8 * k for k in range(4)], sy0 + 3, sy1 - 3, 1.5)
-    # The two beams the bottom plate screws to: level, from the face wall to the back wall, 2 mm
-    # up so the plate fits under them. Insert holes from below.
+    # The four bosses the bottom plate screws to: on the bed, against the front and back walls,
+    # leaning with them. Insert holes from below.
     for bx in BEAM_X:
-        beam = box(bx - BEAM_W / 2, bx + BEAM_W / 2, 0, Y1 + 40, zf + WALL - 0.6, T_FOOT - WALL + 0.6)
-        s += local(world(beam) ^ box(-1000, 1000, -1000, 1000, PLATE, PLATE + BEAM_H))
+        for za, zb in ((zf + WALL - 0.6, zf + WALL + BOSS_D), (T_FOOT - WALL - BOSS_D, T_FOOT - WALL + 0.6)):
+            boss = box(bx - BEAM_W / 2, bx + BEAM_W / 2, 0, Y1 + 40, za, zb)
+            s += local(world(boss) ^ box(-1000, 1000, -1000, 1000, 0, BOSS_H))
         for (hx, hy) in bottom_screws(bx):
-            s -= local(Manifold.cylinder(BOTTOM_INSERT_DEPTH + 0.5, INSERT_HOLE / 2, circular_segments=SEG).translate([hx, hy, PLATE - 0.5]))
-            s -= local(Manifold.cylinder(PLATE + 9.5, 1.3, circular_segments=SEG).translate([hx, hy, -0.5]))   # room for the screw's tip
+            r = INSERT_HOLE / 2                          # the hole for the insert, then a narrower one for the screw's tip, each with a conical top
+            s -= local(Manifold.cylinder(BOTTOM_INSERT_DEPTH + 1.0, r, circular_segments=SEG).translate([hx, hy, -0.5]))
+            s -= local(Manifold.cylinder(r - 1.3, r, 1.3, circular_segments=SEG).translate([hx, hy, BOTTOM_INSERT_DEPTH + 0.49]))
+            s -= local(Manifold.cylinder(BOSS_H - 3.0, 1.3, circular_segments=SEG).translate([hx, hy, -0.5]))
+            s -= local(Manifold.cylinder(1.3, 1.3, 0.01, circular_segments=SEG).translate([hx, hy, BOSS_H - 3.51]))
     # Level with the desk
     return local(world(s) ^ box(-1000, 1000, -1000, 1000, 0, 1000))
 
@@ -232,7 +240,7 @@ def world_y(zl, zw):
 def bottom_screws(bx):
     """World (x, y) of the two screw holes in the beam at local x = bx: in from each wall."""
     zf = CASE[2] + CLR
-    return ((bx, world_y(zf + WALL, PLATE + 2) + BOTTOM_SCREW_IN), (bx, world_y(T_FOOT - WALL, PLATE + 2) - BOTTOM_SCREW_IN))
+    return ((bx, world_y(zf + WALL, 2.5) + BOTTOM_SCREW_IN), (bx, world_y(T_FOOT - WALL, 2.5) - BOTTOM_SCREW_IN))
 
 
 def cavity():
@@ -246,29 +254,22 @@ def cavity():
 
 
 def build_bottom():
-    """The bottom plate, in world coordinates, resting on the desk: the cavity's outline at the
-    desk less the clearance, 2 mm thick, with the SEN66's two posts, the screw holes and the
-    pockets for four 10 mm rubber feet."""
+    """The bottom plate, in world coordinates, under the saddle (z from -PLATE to 0): the saddle's
+    footprint less a little, 2 mm thick, with the SEN66's two posts and the screw holes. Flat
+    underneath, for stick-on rubber feet."""
     zf = CASE[2] + CLR
-    c = world(cavity())
-    outline = (c.slice(0.05) ^ c.slice(PLATE - 0.05)).offset(-PLATE_CLR, JoinType.Miter)   # the walls lean: fit both ends
-    p = outline.extrude(PLATE)
+    outline = world(build()).slice(0.05).hull().offset(-PLATE_CLR, JoinType.Round, circular_segments=SEG)
+    p = outline.extrude(PLATE).translate([0, 0, -PLATE])
     # The SEN66 rests on two posts, up to its bottom edge (a plane leaning with the case)
     x0, x1, y0, y1, z0, z1 = sensor_box()
     zw = T_FOOT - WALL - 0.7
     for px in (x0 + 8, x1 - 10):
-        post = world(box(px, px + 2, y1 + 0.15, Y1 + 40, zf + WALL + 1.0, zw)) ^ box(-1000, 1000, -1000, 1000, PLATE - 0.01, 100)
-        p += post
+        p += world(box(px, px + 2, y1 + 0.15, Y1 + 40, zf + WALL + 1.0, zw)) ^ box(-1000, 1000, -1000, 1000, -0.01, 100)
     # Countersunk screw holes (90 degrees, heads flush)
     for bx in BEAM_X:
         for (hx, hy) in bottom_screws(bx):
-            p -= Manifold.cylinder(PLATE + 2, 1.7, circular_segments=SEG).translate([hx, hy, -1])
-            p -= Manifold.cylinder(1.6, 3.3, 1.7, circular_segments=SEG).translate([hx, hy, -0.01])
-    # Rubber feet: 10 mm, 2 mm thick, in 1.4 mm pockets (0.6 proud)
-    b = p.bounding_box()
-    for fx in (X0 + 9, X1 - 9):
-        for fy in (b[1] + 7.5, b[4] - 7.5):
-            p -= Manifold.cylinder(1.4, 5.25, circular_segments=SEG).translate([fx, fy, -0.01])
+            p -= Manifold.cylinder(PLATE + 2, 1.7, circular_segments=SEG).translate([hx, hy, -PLATE - 1])
+            p -= Manifold.cylinder(1.6, 3.3, 1.7, circular_segments=SEG).translate([hx, hy, -PLATE - 0.01])
     return p
 
 
@@ -326,7 +327,7 @@ def main():
     print(f"saddle: {bb[3] - bb[0]:.1f} wide, {bb[4] - bb[1]:.1f} deep, {bb[5] - bb[2]:.1f} tall")
     p = build_bottom()
     tp = to_trimesh(p)
-    tp.apply_translation(shift)   # the same frame as saddle.stl, so the two line up in a slicer
+    tp.apply_translation([shift[0], shift[1], -tp.bounds[0][2]])   # on the bed, lined up with saddle.stl in X and Y
     tp.export(os.path.join(args.out, "saddle_bottom.stl"))
     pb = p.bounding_box()
     print(f"bottom plate: {p.volume():.0f} mm^3, {p.status()}, {pb[3] - pb[0]:.1f} x {pb[4] - pb[1]:.1f} x {pb[5] - pb[2]:.1f}")
