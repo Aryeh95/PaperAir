@@ -118,7 +118,6 @@ int main() {
   render(c, "fresh", Day{.co2_now = 640, .pm25_now = 3.4f, .hcho_now = 16, .voc_now = 96}, clean);
   render(c, "particles", Day{.co2_now = 720, .pm25_now = 24, .voc_now = 160, .cooking = true}, clean);
   render(c, "smoke_outside", Day{.co2_now = 690, .pm25_now = 7}, smoky);
-  render(c, "dry", Day{.co2_now = 610, .pm25_now = 3, .temp_now = 20.5f, .rh_now = 24}, clean, nullptr, false);
   render(c, "starting", Day{}, clean, [](ui::ScreenData &d, air::Readings &r) {
     r = air::Readings();
     static air::History empty;

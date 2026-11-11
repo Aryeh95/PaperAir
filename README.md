@@ -30,7 +30,6 @@ The headline is always one thing to do, most urgent first:
 | Gas stove fumes | Turn on the kitchen fan. | NOx index 50 |
 | CO₂ building up | Open a window. | 1,000 ppm |
 | Smoke outside | Keep the windows shut. | outdoor AQI above 150 |
-| Dry or humid | The air is dry. / The air is humid. | below 30% / above 60% |
 | A little above usual | The air is fine. | CO₂ 800, PM2.5 9, HCHO 40, VOC 150, NOx 20 |
 | Otherwise | The air is fresh. | |
 

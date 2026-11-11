@@ -234,8 +234,8 @@ static void test_advice_states() {
 
   a = advise(room(600, 5, 45, 100, 1, 95), h, outside(26), true, true);
   TEST_ASSERT_EQUAL(Topic::HCHO, a.topic);
-  a = advise(room(600, 5, 22), h, Outdoor(), true, true);
-  TEST_ASSERT_EQUAL(Topic::Dry, a.topic);
+  a = advise(room(600, 5, 22), h, Outdoor(), true, true);  // dry: not advised on, the sensor runs warm
+  TEST_ASSERT_EQUAL(Topic::None, a.topic);
   a = advise(room(600, 5, 45, 100, 64), h, Outdoor(), true, true);
   TEST_ASSERT_EQUAL(Topic::NOx, a.topic);
 }

@@ -9,7 +9,6 @@
 //   HCHO        40 ppb watch (Health Canada long-term limit, 50 ug/m3), 80 act (WHO, 0.1 mg/m3)
 //   VOC index   150 watch, 250 act (Sensirion's index: 100 is the room's normal level)
 //   NOx index   20 watch, 50 act (1 is normal; a gas stove pushes it up)
-//   Humidity    30-60% comfortable
 #include <cmath>
 #include <cstdio>
 #include <string>
@@ -94,7 +93,7 @@ inline Advice advise(const Readings &r, const History &h, const Outdoor &out, bo
   using namespace limits;
   Advice a;
   const float co2 = r[Metric::CO2], pm25 = r[Metric::PM25], voc = r[Metric::VOC], nox = r[Metric::NOx];
-  const float hcho = r[Metric::HCHO], rh = r[Metric::Humidity];
+  const float hcho = r[Metric::HCHO];
 
   if (!sensor_ok) {
     if (sensor_seen) {
@@ -168,10 +167,6 @@ inline Advice advise(const Readings &r, const History &h, const Outdoor &out, bo
   } else if (outdoor_known && out.aqi > 150) {
     a = {Mood::Fine, Topic::OutdoorSmoke, "Keep the windows shut.",
          std::string("It's ") + aqi_word(out.aqi) + " outside (" + aqi_txt + "). The air inside is fine.", ""};
-  } else if (!std::isnan(rh) && rh < kHumidityLow) {
-    a = {Mood::Fine, Topic::Dry, "The air is dry.", "Humidity is " + fmt("%.0f", rh) + "%. A humidifier would help.", ""};
-  } else if (!std::isnan(rh) && rh > kHumidityHigh) {
-    ventilate(Mood::Fine, Topic::Humid, "The air is humid.", "Humidity is " + fmt("%.0f", rh) + "%.");
   } else if (co2 > kCo2Watch) {
     a = {Mood::Fine, Topic::CO2, "The air is fine.", "CO₂ is starting to build (" + with_commas(co2) + " ppm).", ""};
   } else if (pm25 > kPm25Watch || hcho > kHchoWatch || voc >= kVocWatch || nox >= kNoxWatch) {

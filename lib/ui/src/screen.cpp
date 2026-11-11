@@ -147,22 +147,11 @@ Hero hero(const ScreenData &d) {
               lim::kVocAct, "250"};
     case Topic::NOx:
       return {num(r[Metric::NOx], "%.0f"), "NOx index", "1 is normal", Metric::NOx, 0, 100, lim::kNoxAct, "50"};
-    case Topic::Dry:
-    case Topic::Humid:
-      return {num(r[Metric::Humidity], "%.0f") + "%", "humidity", "30 to 60% is comfortable", Metric::Humidity, 0,
-              100, a.topic == Topic::Dry ? lim::kHumidityLow : lim::kHumidityHigh,
-              a.topic == Topic::Dry ? "30%" : "60%"};
-    default: {
-      // Nothing to act on: show comfort, with CO2 through the day in the chart
-      const float t = temp_display(d, r[Metric::Temp]);
-      const float rh = r[Metric::Humidity];
-      std::string note = "Comfortable";
-      const float t_f = d.fahrenheit ? t : t * 9 / 5 + 32;
-      if (!std::isnan(t_f) && t_f < 66) note = "A little cool";
-      if (!std::isnan(t_f) && t_f > 78) note = "A little warm";
-      return {std::isnan(t) ? "--" : fmt("%.0f", t) + "°", std::isnan(rh) ? "humidity --" : fmt("%.0f", rh) + "% humidity",
-              note, Metric::CO2, 400, 1400, lim::kCo2Act, "CO₂ · open a window above 1,000 ppm"};
-    }
+    default:
+      // Nothing to act on: CO2, the reading that moves most through the day
+      return {air::with_commas(r[Metric::CO2]), "ppm CO₂",
+              r[Metric::CO2] > lim::kCo2Watch ? "Starting to build" : "Well ventilated", Metric::CO2, 400, 1400,
+              lim::kCo2Act, "Open a window above 1,000 ppm"};
   }
 }
 
@@ -259,12 +248,14 @@ void top_line(M5Canvas &c, const ScreenData &d) {
 }
 
 // ---- Bottom row: every other reading ---------------------------------------------
-void bottom_row(M5Canvas &c, const ScreenData &d, Metric featured, bool featured_is_comfort) {
+// Temperature and humidity aren't shown: the sensor sits warm in its enclosure, and a thermometer
+// nearby does that job better. Both still go to the web page and Home Assistant.
+void bottom_row(M5Canvas &c, const ScreenData &d, Metric featured) {
   std::vector<Item> items;
-  const Metric order[] = {Metric::Temp, Metric::Humidity, Metric::CO2, Metric::PM25, Metric::PM1,
-                          Metric::PM10, Metric::VOC,      Metric::NOx, Metric::HCHO};
+  const Metric order[] = {Metric::CO2, Metric::PM25, Metric::PM1, Metric::PM10,
+                          Metric::VOC, Metric::NOx,  Metric::HCHO};
   for (Metric m : order) {
-    if (featured_is_comfort ? (m == Metric::Temp || m == Metric::Humidity) : m == featured) continue;
+    if (m == featured) continue;
     if (m == Metric::HCHO && !d.hcho_fitted) continue;
     items.push_back(item(d, m));
   }
@@ -323,10 +314,9 @@ void draw_main(M5Canvas &c, const ScreenData &d) {
   text(c, serif_hero, h.number, kMargin - 4, base, 0);
   text(c, sans_strong, h.unit, kMargin, base + 36, 0);
   text(c, sans_note, h.note, kMargin, base + 60, 5);
-  const bool comfort = a.topic == Topic::None || a.topic == Topic::OutdoorSmoke;
   chart(c, d, 360, std::max(y + 18, 226), 560, 150, h.chart, h.lo, h.hi, h.limit, h.limit_label, true);
 
-  bottom_row(c, d, h.chart, comfort || a.mood == Mood::Starting || a.mood == Mood::NoSensor);
+  bottom_row(c, d, h.number.empty() ? Metric::Count : h.chart);
 }
 
 void trend_block(M5Canvas &c, const ScreenData &d, int y, const char *title, const char *unit, Metric m, float lo,
@@ -380,7 +370,8 @@ std::string signature(const ScreenData &d) {
                   '|' + d.advice.outdoor + '|' + std::to_string(d.history ? d.history->version() : 0) + '|' +
                   std::to_string(d.indoor_aqi);
   if (d.time_valid) s += '|' + std::to_string(d.local_time.tm_yday) + clock_text(d, d.local_time);
-  for (int m = 0; m < air::kMetrics; m++) s += '|' + item(d, (Metric) m).value;
+  for (int m = 0; m < air::kMetrics; m++)
+    if ((Metric) m != Metric::Temp && (Metric) m != Metric::Humidity) s += '|' + item(d, (Metric) m).value;
   return s;
 }
 
