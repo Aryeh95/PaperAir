@@ -4,10 +4,6 @@
 // minutes, and redraws the e-paper screen when something worth showing has changed.
 // Buttons: G4 switches between the main page and the 24-hour trends; G3 does a full refresh.
 #include <DNSServer.h>
-#include <esp_heap_caps.h>
-
-#include <algorithm>
-#include <vector>
 
 #include <cstring>
 #include <M5Unified.h>
@@ -25,6 +21,7 @@
 #include "screen.h"
 #include "sensors.h"
 #include "settings.h"
+#include "epd.h"
 #include "mqtt.h"
 #include "ota.h"
 #include "version.h"
@@ -279,68 +276,7 @@ ui::ScreenData screen_data() {
   return d;
 }
 
-// M5GFX's quality mode erases and redraws every pixel it is given, changed or not (a finished
-// pixel is marked done, so the next request for the same value counts as a change). Pushing the
-// whole canvas would flash the whole screen every minute, so only the blocks that changed since
-// the last push are sent, each as its own update. The rest of the screen stays still.
-uint8_t *shown_pixels = nullptr;   // the canvas as last pushed (PSRAM); nullptr = push everything
-
-void push_changed() {
-  constexpr int kTile = 16;
-  const int w = canvas.width(), h = canvas.height();
-  const size_t stride = canvas.bufferLength() / h;
-  const auto *now = static_cast<const uint8_t *>(canvas.getBuffer());
-  const int tiles_x = (w + kTile - 1) / kTile;
-  struct Rect { int x0, x1, y0, y1; };
-  std::vector<Rect> open, done;   // open: rectangles that may still grow downward
-  int changed_tiles = 0;
-  for (int y0 = 0; y0 < h; y0 += kTile) {
-    const int y1 = std::min(h, y0 + kTile);
-    std::vector<Rect> runs;
-    int run_start = -1;
-    for (int tx = 0; tx <= tiles_x; tx++) {
-      bool changed = false;
-      if (tx < tiles_x) {
-        const int x0 = tx * kTile, x1 = std::min(w, x0 + kTile);
-        for (int y = y0; y < y1 && !changed; y++)
-          changed = memcmp(now + y * stride + x0, shown_pixels + y * stride + x0, x1 - x0) != 0;
-      }
-      if (changed) {
-        changed_tiles++;
-        if (run_start < 0) run_start = tx;
-      } else if (run_start >= 0) {
-        runs.push_back({run_start * kTile, std::min(w, tx * kTile), y0, y1});
-        run_start = -1;
-      }
-    }
-    // A run directly below an open rectangle of the same width extends it; the rest close
-    std::vector<Rect> next;
-    for (auto &r : runs) {
-      auto it = std::find_if(open.begin(), open.end(), [&](const Rect &o) { return o.x0 == r.x0 && o.x1 == r.x1 && o.y1 == y0; });
-      if (it != open.end()) {
-        it->y1 = y1;
-        next.push_back(*it);
-        open.erase(it);
-      } else {
-        next.push_back(r);
-      }
-    }
-    done.insert(done.end(), open.begin(), open.end());
-    open = next;
-  }
-  done.insert(done.end(), open.begin(), open.end());
-  if (changed_tiles * 2 > tiles_x * ((h + kTile - 1) / kTile)) {   // most of it changed (a page switch): one push
-    canvas.pushSprite(0, 0);
-    M5.Display.display();
-    return;
-  }
-  for (const auto &r : done) {
-    M5.Display.setClipRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
-    canvas.pushSprite(0, 0);
-    M5.Display.clearClipRect();
-    M5.Display.display();   // its own update, so the space between rectangles is left alone
-  }
-}
+bool epdiy_ok = false;   // EPDiy drives the panel; otherwise M5GFX does, as on main
 
 void update_screen() {
   static unsigned long check_ms = 0;
@@ -355,28 +291,15 @@ void update_screen() {
   }
 
   ui::draw(canvas, d);
-  M5.Display.waitDisplay();
-  bool push_all = shown_pixels == nullptr;
-  if (clean_now || elapsed(cleaned_ms, config::kCleanRefreshMs)) {
-    push_all = true;
-    // Black, then white, then the picture: clears any faint ghost of earlier screens
-    M5.Display.setEpdMode(epd_mode_t::epd_fast);
-    M5.Display.fillScreen(TFT_BLACK);
-    M5.Display.waitDisplay();
-    M5.Display.fillScreen(TFT_WHITE);
-    M5.Display.waitDisplay();
-    cleaned_ms = millis();
-  }
-  M5.Display.setEpdMode(epd_mode_t::epd_quality);
-  if (push_all) {
+  const bool clean = clean_now || elapsed(cleaned_ms, config::kCleanRefreshMs);
+  if (clean) cleaned_ms = millis();
+  if (epdiy_ok) {
+    epd::show(static_cast<const uint8_t *>(canvas.getBuffer()), clean ? epd::Update::Clean : epd::Update::Gentle);
+  } else {
     canvas.pushSprite(0, 0);
     M5.Display.display();
-  } else {
-    push_changed();
+    M5.Display.waitDisplay();
   }
-  M5.Display.waitDisplay();
-  if (!shown_pixels) shown_pixels = static_cast<uint8_t *>(heap_caps_malloc(canvas.bufferLength(), MALLOC_CAP_SPIRAM));
-  if (shown_pixels) memcpy(shown_pixels, canvas.getBuffer(), canvas.bufferLength());
 
   shown_signature = sig;
   shown_headline = d.advice.headline;
@@ -428,6 +351,7 @@ void setup() {
   Serial.printf("PaperAir %s (built %s) starting\n", kVersion, kBuild);
 
   setup_display();
+  epdiy_ok = epd::begin();
   store.begin("paperair");
   Serial.println(sfa40.begin() ? "SFA40 found (formaldehyde readings start after 10 minutes)" : "No SFA40");
 
