@@ -28,6 +28,7 @@ struct ScreenData {
   bool hcho_fitted = false;             // an SFA40 is connected
   bool fahrenheit = true;
   bool clock_24h = false;
+  bool voc_alerts = true;               // false: no "past its limit" mark under VOC
   bool wifi_ok = true;
   bool time_valid = false;
   std::tm local_time{};

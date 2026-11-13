@@ -4,6 +4,7 @@
 // minutes, and redraws the e-paper screen when something worth showing has changed.
 // Buttons: G4 switches between the main page and the 24-hour trends; G3 does a full refresh.
 #include <DNSServer.h>
+#include <LittleFS.h>
 #include <esp_heap_caps.h>
 
 #include <algorithm>
@@ -40,7 +41,8 @@ Sen66 sen66(m5::In_I2C);  // not M5.In_I2C: that reference is only set once M5 i
 Sfa40 sfa40(m5::In_I2C);
 
 air::History history;
-Preferences store;             // the history, saved to flash every 5 minutes
+Preferences store;             // the settings namespace (the history used to be kept here too)
+bool history_fs = false;       // the file system the history is saved to is mounted
 bool history_restored = false;
 unsigned long history_saved_ms = 0;
 air::Readings latest;
@@ -236,20 +238,50 @@ void keep_connected() {
 }
 
 // The history is kept against the clock so it can be carried over a restart: loaded once the
-// time server has set the clock, saved every 5 minutes after that.
+// time server has set the clock, saved every 5 minutes after that. It goes in a file on the
+// 3.4 MB data partition: at 10 KB it was too big for the 20 KB settings store (NVS), which needs
+// room for the new copy before it drops the old one, so every save after the first failed.
+constexpr const char *kHistoryFile = "/history.bin";
+
+size_t read_history(uint8_t *buf, size_t cap) {
+  if (history_fs) {
+    File f = LittleFS.open(kHistoryFile, "r");
+    if (f) {
+      const size_t n = f.read(buf, cap);
+      f.close();
+      return n;
+    }
+  }
+  // Firmware before 1.8 kept it in NVS: use that once, then free the space
+  const size_t n = store.getBytes("history", buf, cap);
+  if (store.isKey("history")) store.remove("history");
+  return n;
+}
+
+bool write_history(const uint8_t *buf, size_t n) {
+  if (!history_fs) return false;
+  // Written beside the old copy and renamed over it, so a restart mid-write keeps the old one
+  File f = LittleFS.open("/history.tmp", "w");
+  if (!f) return false;
+  const bool ok = f.write(buf, n) == n;
+  f.close();
+  return ok && LittleFS.rename("/history.tmp", kHistoryFile);
+}
+
 void keep_history() {
   const time_t t = time(nullptr);
   if (t < 1700000000) return;
   static uint8_t buf[air::History::kSaveSize];
   if (!history_restored) {
     history_restored = true;
-    const size_t n = store.getBytes("history", buf, sizeof buf);
+    const size_t n = read_history(buf, sizeof buf);
     if (n && history.restore(buf, n, (uint32_t) t, millis())) Serial.println("History restored from flash");
+    else if (n) Serial.println("History in flash was too old (or from another clock) to use");
     history_saved_ms = millis();
   } else if (elapsed(history_saved_ms, air::History::kBucketMs)) {
     history_saved_ms = millis();
     const size_t n = history.save(buf, sizeof buf, (uint32_t) t);
-    if (n) store.putBytes("history", buf, n);
+    if (n && !write_history(buf, n)) Serial.println("History: could not save to flash");
   }
 }
 
@@ -260,7 +292,8 @@ ui::ScreenData screen_data() {
   d.outdoor = outdoor;
   const bool sensor_ok = sensor_seen && !elapsed(sensor_ms, 30000);
   if (!sensor_ok) d.now = air::Readings();
-  d.advice = air::advise(d.now, history, outdoor, sensor_seen, sensor_ok);
+  d.advice = air::advise(d.now, history, outdoor, sensor_seen, sensor_ok, settings.voc_alerts);
+  d.voc_alerts = settings.voc_alerts;
   const float pm25 = d.now[Metric::PM25];
   d.indoor_aqi = std::isnan(pm25) ? -1 : air::aqi_from_pm25(pm25);
   d.hcho_fitted = sfa40.found();
@@ -429,6 +462,9 @@ void setup() {
 
   setup_display();
   store.begin("paperair");
+  // The data partition; formatted the first time (a few seconds, once)
+  history_fs = LittleFS.begin(true, "/littlefs", 4, "spiffs");
+  if (!history_fs) Serial.println("History: no file system, it won't survive a restart");
   Serial.println(sfa40.begin() ? "SFA40 found (formaldehyde readings start after 10 minutes)" : "No SFA40");
 
   settings_load();

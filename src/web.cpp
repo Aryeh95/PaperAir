@@ -6,6 +6,7 @@
 #include <Update.h>
 #include <WiFi.h>
 #include <esp_random.h>
+#include <esp_system.h>
 
 #include <cmath>
 #include <cstring>
@@ -169,6 +170,22 @@ void handle_now() {
   dev["bssid"] = WiFi.BSSIDstr();
   dev["channel"] = WiFi.channel();
   dev["uptime"] = uptime();
+  {
+    // Why it last started: worth knowing when the history resets or the screen restarts
+    const char *why = "unknown";
+    switch (esp_reset_reason()) {
+      case ESP_RST_POWERON: why = "power on"; break;
+      case ESP_RST_SW: why = "restart (update or button)"; break;
+      case ESP_RST_PANIC: why = "crash"; break;
+      case ESP_RST_INT_WDT:
+      case ESP_RST_TASK_WDT:
+      case ESP_RST_WDT: why = "watchdog (it hung)"; break;
+      case ESP_RST_BROWNOUT: why = "power dip (brownout)"; break;
+      case ESP_RST_DEEPSLEEP: why = "wake from sleep"; break;
+      default: break;
+    }
+    dev["reset"] = why;
+  }
   dev["heap"] = String(ESP.getFreeHeap() / 1024) + " KB";
   dev["version"] = kVersion;
   dev["mqtt"] = mqtt_status();
@@ -293,6 +310,7 @@ void handle_settings_page() {
   page.replace("%C_SEL%", settings.fahrenheit ? "" : "checked");
   page.replace("%H12_SEL%", settings.clock_24h ? "" : "checked");
   page.replace("%H24_SEL%", settings.clock_24h ? "checked" : "");
+  page.replace("%VOC_SEL%", settings.voc_alerts ? "checked" : "");
   page.replace("%T_OFF%", String(settings.temperature_offset_c, 1));
   page.replace("%TZ%", html_escape(settings.time_zone));
   page.replace("%MQ_HOST%", html_escape(settings.mqtt_host));
@@ -347,6 +365,7 @@ void handle_settings_post() {
   settings.airnow_zip.trim();
   settings.fahrenheit = server.arg("units") != "c";
   settings.clock_24h = server.arg("clock") == "24";
+  settings.voc_alerts = server.arg("voc_al") == "1";
   settings.temperature_offset_c = server.arg("t_off").toFloat();
   String tz = server.arg("tz");
   tz.trim();

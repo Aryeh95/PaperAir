@@ -238,6 +238,11 @@ static void test_advice_states() {
   TEST_ASSERT_EQUAL(Topic::None, a.topic);
   a = advise(room(600, 5, 45, 100, 64), h, Outdoor(), true, true);
   TEST_ASSERT_EQUAL(Topic::NOx, a.topic);
+  a = advise(room(600, 5, 45, 300), h, Outdoor(), true, true);
+  TEST_ASSERT_EQUAL(Topic::VOC, a.topic);
+  a = advise(room(600, 5, 45, 300), h, Outdoor(), true, true, false);  // VOC alerts off
+  TEST_ASSERT_EQUAL(Topic::None, a.topic);
+  TEST_ASSERT_EQUAL(Mood::Fresh, a.mood);
 }
 
 static void test_advice_duration() {

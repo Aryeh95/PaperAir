@@ -101,7 +101,7 @@ Item item(const ScreenData &d, Metric m) {
     case Metric::PM1: return {"PM1", val("%.1f"), "", false};
     case Metric::PM25: return {"PM2.5", val("%.1f"), "µg/m³", v > lim::kPm25Act};
     case Metric::PM10: return {"PM10", val("%.1f"), "", v > 45};
-    case Metric::VOC: return {"VOC", val("%.0f"), "", v >= lim::kVocAct};
+    case Metric::VOC: return {"VOC", val("%.0f"), "", d.voc_alerts && v >= lim::kVocAct};
     case Metric::NOx: return {"NOx", val("%.0f"), "", v >= lim::kNoxAct};
     case Metric::HCHO: return {"HCHO", val("%.0f"), "ppb", v > lim::kHchoAct};
     case Metric::Temp:

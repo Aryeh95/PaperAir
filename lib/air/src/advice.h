@@ -89,10 +89,14 @@ inline std::string fmt(const char *format, float v) {
 }
 
 // sensor_seen: the SEN66 has reported at least once; sensor_ok: it's reporting now.
-inline Advice advise(const Readings &r, const History &h, const Outdoor &out, bool sensor_seen, bool sensor_ok) {
+// voc_alerts: false ignores the VOC index (it rises with cooking, cleaning or perfume, and some
+// rooms just run high).
+inline Advice advise(const Readings &r, const History &h, const Outdoor &out, bool sensor_seen, bool sensor_ok,
+                     bool voc_alerts = true) {
   using namespace limits;
   Advice a;
-  const float co2 = r[Metric::CO2], pm25 = r[Metric::PM25], voc = r[Metric::VOC], nox = r[Metric::NOx];
+  const float co2 = r[Metric::CO2], pm25 = r[Metric::PM25], nox = r[Metric::NOx];
+  const float voc = voc_alerts ? r[Metric::VOC] : NAN;   // NAN never passes a limit
   const float hcho = r[Metric::HCHO];
 
   if (!sensor_ok) {
