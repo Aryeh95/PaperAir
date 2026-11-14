@@ -24,6 +24,12 @@ void check_pending() {
 
 }  // namespace
 
+// Without this the Arduino core marks new firmware good the moment it boots (before setup()), so a
+// version that crashes or hangs during startup would never roll back. With it, the firmware stays
+// on trial until ota_loop() confirms it; any restart before then (a crash, or a power cycle after
+// a hang) boots the previous version again.
+extern "C" bool verifyRollbackLater() { return true; }
+
 void ota_begin(const String &password) {
   check_pending();
   if (started) return;
