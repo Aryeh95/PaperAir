@@ -16,6 +16,7 @@ struct Settings {
   bool fahrenheit = true;
   bool clock_24h = false;
   bool voc_alerts = true;                   // false: the VOC index never triggers advice
+  bool co2_alerts = true;                   // false: CO2 never triggers advice
   String time_zone;
   String mqtt_host, mqtt_user, mqtt_password;   // Home Assistant's MQTT broker; empty host = off
   int mqtt_port = 1883;

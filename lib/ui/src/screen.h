@@ -29,6 +29,7 @@ struct ScreenData {
   bool fahrenheit = true;
   bool clock_24h = false;
   bool voc_alerts = true;               // false: no "past its limit" mark under VOC
+  bool co2_alerts = true;               // false: no "past its limit" mark under CO2
   bool wifi_ok = true;
   bool time_valid = false;
   std::tm local_time{};

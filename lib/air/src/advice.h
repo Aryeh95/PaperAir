@@ -89,13 +89,14 @@ inline std::string fmt(const char *format, float v) {
 }
 
 // sensor_seen: the SEN66 has reported at least once; sensor_ok: it's reporting now.
-// voc_alerts: false ignores the VOC index (it rises with cooking, cleaning or perfume, and some
-// rooms just run high).
+// voc_alerts / co2_alerts: false ignores that reading (the VOC index rises with cooking, cleaning
+// or perfume, and some rooms just run high; CO2 in a bedroom overnight may be expected).
 inline Advice advise(const Readings &r, const History &h, const Outdoor &out, bool sensor_seen, bool sensor_ok,
-                     bool voc_alerts = true) {
+                     bool voc_alerts = true, bool co2_alerts = true) {
   using namespace limits;
   Advice a;
   const float co2 = r[Metric::CO2], pm25 = r[Metric::PM25], nox = r[Metric::NOx];
+  const float co2_alert = co2_alerts ? co2 : NAN;        // what the CO2 limits see; NAN never passes one
   const float voc = voc_alerts ? r[Metric::VOC] : NAN;   // NAN never passes a limit
   const float hcho = r[Metric::HCHO];
 
@@ -154,7 +155,7 @@ inline Advice advise(const Readings &r, const History &h, const Outdoor &out, bo
   };
 
   // Most urgent first
-  if (co2 > kCo2Urgent) {
+  if (co2_alert > kCo2Urgent) {
     ventilate(Mood::Urgent, Topic::CO2, "Open a window now.", "CO₂ is very high: " + with_commas(co2) + " ppm.");
   } else if (pm25 >= kPm25Urgent) {
     particles(Mood::Urgent);
@@ -166,12 +167,12 @@ inline Advice advise(const Readings &r, const History &h, const Outdoor &out, bo
     ventilate(Mood::Act, Topic::VOC, "Air out the room.", "Strong smells or fumes (VOC index " + fmt("%.0f", voc) + ").");
   } else if (nox >= kNoxAct) {
     ventilate(Mood::Act, Topic::NOx, "Turn on the kitchen fan.", "Combustion gases are up, often from a gas stove (NOx index " + fmt("%.0f", nox) + ").");
-  } else if (co2 > kCo2Act) {
+  } else if (co2_alert > kCo2Act) {
     ventilate(Mood::Act, Topic::CO2, "Open a window.", co2_detail());
   } else if (outdoor_known && out.aqi > 150) {
     a = {Mood::Fine, Topic::OutdoorSmoke, "Keep the windows shut.",
          std::string("It's ") + aqi_word(out.aqi) + " outside (" + aqi_txt + "). The air inside is fine.", ""};
-  } else if (co2 > kCo2Watch) {
+  } else if (co2_alert > kCo2Watch) {
     a = {Mood::Fine, Topic::CO2, "The air is fine.", "CO₂ is starting to build (" + with_commas(co2) + " ppm).", ""};
   } else if (pm25 > kPm25Watch || hcho > kHchoWatch || voc >= kVocWatch || nox >= kNoxWatch) {
     a = {Mood::Fine, Topic::None, "The air is fine.", "A little above its usual level, nothing to do yet.", ""};

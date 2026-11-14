@@ -56,6 +56,7 @@ void settings_load() {
   settings.fahrenheit = p.getBool("fahr", config::kFahrenheit);
   settings.clock_24h = p.getBool("clk24", config::kClock24h);
   settings.voc_alerts = p.getBool("voc_al", true);
+  settings.co2_alerts = p.getBool("co2_al", true);
   settings.time_zone = p.getString("tz", config::kTimeZone);
   settings.mqtt_host = p.getString("mq_host", MQTT_HOST);
   settings.mqtt_port = p.getInt("mq_port", MQTT_PORT);
@@ -84,6 +85,7 @@ void settings_save() {
   p.putBool("fahr", settings.fahrenheit);
   p.putBool("clk24", settings.clock_24h);
   p.putBool("voc_al", settings.voc_alerts);
+  p.putBool("co2_al", settings.co2_alerts);
   p.putString("tz", settings.time_zone);
   p.putString("mq_host", settings.mqtt_host);
   p.putInt("mq_port", settings.mqtt_port);

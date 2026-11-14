@@ -292,8 +292,9 @@ ui::ScreenData screen_data() {
   d.outdoor = outdoor;
   const bool sensor_ok = sensor_seen && !elapsed(sensor_ms, 30000);
   if (!sensor_ok) d.now = air::Readings();
-  d.advice = air::advise(d.now, history, outdoor, sensor_seen, sensor_ok, settings.voc_alerts);
+  d.advice = air::advise(d.now, history, outdoor, sensor_seen, sensor_ok, settings.voc_alerts, settings.co2_alerts);
   d.voc_alerts = settings.voc_alerts;
+  d.co2_alerts = settings.co2_alerts;
   const float pm25 = d.now[Metric::PM25];
   d.indoor_aqi = std::isnan(pm25) ? -1 : air::aqi_from_pm25(pm25);
   d.hcho_fitted = sfa40.found();

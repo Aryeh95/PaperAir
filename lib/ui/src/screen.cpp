@@ -97,7 +97,7 @@ Item item(const ScreenData &d, Metric m) {
   const bool none = std::isnan(v);
   auto val = [&](const char *f) { return none ? std::string("--") : fmt(f, v); };
   switch (m) {
-    case Metric::CO2: return {"CO₂", none ? "--" : air::with_commas(v), "ppm", v > lim::kCo2Act};
+    case Metric::CO2: return {"CO₂", none ? "--" : air::with_commas(v), "ppm", d.co2_alerts && v > lim::kCo2Act};
     case Metric::PM1: return {"PM1", val("%.1f"), "", false};
     case Metric::PM25: return {"PM2.5", val("%.1f"), "µg/m³", v > lim::kPm25Act};
     case Metric::PM10: return {"PM10", val("%.1f"), "", v > 45};

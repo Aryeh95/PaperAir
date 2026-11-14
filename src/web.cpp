@@ -311,6 +311,7 @@ void handle_settings_page() {
   page.replace("%H12_SEL%", settings.clock_24h ? "" : "checked");
   page.replace("%H24_SEL%", settings.clock_24h ? "checked" : "");
   page.replace("%VOC_SEL%", settings.voc_alerts ? "checked" : "");
+  page.replace("%CO2_SEL%", settings.co2_alerts ? "checked" : "");
   page.replace("%T_OFF%", String(settings.temperature_offset_c, 1));
   page.replace("%TZ%", html_escape(settings.time_zone));
   page.replace("%MQ_HOST%", html_escape(settings.mqtt_host));
@@ -366,6 +367,7 @@ void handle_settings_post() {
   settings.fahrenheit = server.arg("units") != "c";
   settings.clock_24h = server.arg("clock") == "24";
   settings.voc_alerts = server.arg("voc_al") == "1";
+  settings.co2_alerts = server.arg("co2_al") == "1";
   settings.temperature_offset_c = server.arg("t_off").toFloat();
   String tz = server.arg("tz");
   tz.trim();
