@@ -124,6 +124,15 @@ int main() {
     d.history = &empty;
     d.indoor_aqi = -1;
   });
+  // The plots as chosen in the settings: particles large, six hours
+  render(c, "custom", Day{.co2_now = 880, .pm25_now = 11, .voc_now = 170, .cooking = true}, clean,
+         [](ui::ScreenData &d, air::Readings &) {
+           d.big = Metric::PM25;
+           d.side[0] = Metric::CO2;
+           d.side[1] = Metric::HCHO;
+           d.side[2] = Metric::VOC;
+           d.span_hours = 6;
+         });
   render(c, "trends", Day{}, clean, [](ui::ScreenData &d, air::Readings &) { d.page = ui::Page::Trends; });
   return 0;
 }

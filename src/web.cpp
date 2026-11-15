@@ -312,6 +312,11 @@ void handle_settings_page() {
   page.replace("%H24_SEL%", settings.clock_24h ? "checked" : "");
   page.replace("%VOC_SEL%", settings.voc_alerts ? "checked" : "");
   page.replace("%CO2_SEL%", settings.co2_alerts ? "checked" : "");
+  page.replace("%PL_BIG%", String(settings.plot_big));
+  page.replace("%PL_S1%", String(settings.plot_side[0]));
+  page.replace("%PL_S2%", String(settings.plot_side[1]));
+  page.replace("%PL_S3%", String(settings.plot_side[2]));
+  page.replace("%PL_HRS%", String(settings.plot_hours));
   page.replace("%T_OFF%", String(settings.temperature_offset_c, 1));
   page.replace("%TZ%", html_escape(settings.time_zone));
   page.replace("%MQ_HOST%", html_escape(settings.mqtt_host));
@@ -368,6 +373,18 @@ void handle_settings_post() {
   settings.clock_24h = server.arg("clock") == "24";
   settings.voc_alerts = server.arg("voc_al") == "1";
   settings.co2_alerts = server.arg("co2_al") == "1";
+  if (server.hasArg("pl_big")) {
+    auto metric = [](const String &v, int fallback) {
+      const int n = v.toInt();
+      return v.length() && n >= 0 && n <= 6 ? n : fallback;
+    };
+    settings.plot_big = metric(server.arg("pl_big"), -1);
+    settings.plot_side[0] = metric(server.arg("pl_s1"), 2);
+    settings.plot_side[1] = metric(server.arg("pl_s2"), 4);
+    settings.plot_side[2] = metric(server.arg("pl_s3"), 5);
+    const int hours = server.arg("pl_hrs").toInt();
+    settings.plot_hours = hours == 6 || hours == 12 ? hours : 24;
+  }
   settings.temperature_offset_c = server.arg("t_off").toFloat();
   String tz = server.arg("tz");
   tz.trim();

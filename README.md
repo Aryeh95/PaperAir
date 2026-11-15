@@ -3,8 +3,9 @@
 An air quality display for the living room, on the M5Stack PaperDIY's 4.7" e-paper screen.
 
 Most air monitors show a wall of numbers. PaperAir says in plain words whether to do anything,
-shows the reading behind that advice with its last 24 hours, and keeps every other reading
-in a quiet row along the bottom.
+shows the reading behind that advice large with its last 24 hours, plots three more readings
+beside it, and keeps the rest in a quiet line along the bottom. Which readings get a plot, and how
+far back the plots go, is set on the settings page.
 
 ![Open a window: CO₂ has been building for about 2 hours](preview/co2.png)
 
@@ -88,6 +89,9 @@ the FPC wiring:
    - °F or °C, the 12/24-hour clock, the time zone, and a password for the web page
    - a static IP address if you want one (DHCP otherwise), and whether to roam on a mesh
      network (join the strongest access point, and move when the signal gets weak)
+   - the main screen's plots: the big one (automatic: CO₂ until another reading needs attention,
+     or a reading of your choice), the three beside it, and 6, 12 or 24 hours
+   - whether CO₂ and the VOC index may change the advice
 
    Save, and the PaperDIY joins your network. Everything is kept in flash on the device, so a
    `git pull` and a new upload never touch it.

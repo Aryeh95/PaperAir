@@ -17,6 +17,10 @@ struct Settings {
   bool clock_24h = false;
   bool voc_alerts = true;                   // false: the VOC index never triggers advice
   bool co2_alerts = true;                   // false: CO2 never triggers advice
+  // The main page's plots, as air::Metric numbers. plot_big -1: automatic (what the advice is about)
+  int plot_big = -1;
+  int plot_side[3] = {2, 4, 5};             // PM2.5, VOC, NOx
+  int plot_hours = 24;                      // 6, 12 or 24
   String time_zone;
   String mqtt_host, mqtt_user, mqtt_password;   // Home Assistant's MQTT broker; empty host = off
   int mqtt_port = 1883;

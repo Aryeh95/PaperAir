@@ -315,6 +315,10 @@ ui::ScreenData screen_data() {
   d.advice = air::advise(d.now, history, outdoor, sensor_seen, sensor_ok, settings.voc_alerts, settings.co2_alerts);
   d.voc_alerts = settings.voc_alerts;
   d.co2_alerts = settings.co2_alerts;
+  auto metric = [](int n) { return n >= 0 && n < (int) Metric::Temp ? (Metric) n : Metric::Count; };
+  d.big = metric(settings.plot_big);
+  for (int i = 0; i < 3; i++) d.side[i] = metric(settings.plot_side[i]);
+  d.span_hours = settings.plot_hours == 6 || settings.plot_hours == 12 ? settings.plot_hours : 24;
   const float pm25 = d.now[Metric::PM25];
   d.indoor_aqi = std::isnan(pm25) ? -1 : air::aqi_from_pm25(pm25);
   d.hcho_fitted = sfa40.found();

@@ -112,60 +112,81 @@ Item item(const ScreenData &d, Metric m) {
   }
 }
 
-// ---- The featured reading ----------------------------------------------------
+// ---- How each reading is plotted ---------------------------------------------
+struct Plot {
+  const char *unit;       // beside the big number
+  float lo, hi, limit;    // chart range (it grows to fit the data), and where to act; NAN = no limit
+  const char *limit_label;
+  const char *note;       // under the big number when there's nothing to act on
+};
+
+Plot plot_of(Metric m) {
+  switch (m) {
+    case Metric::CO2: return {"ppm CO₂", 400, 1400, lim::kCo2Act, "1,000 ppm", "Open a window above 1,000"};
+    case Metric::PM1: return {"µg/m³ PM1", 0, 40, NAN, "", "Very fine particles"};
+    case Metric::PM25: return {"µg/m³ PM2.5", 0, 40, lim::kPm25Act, "15 µg/m³", "Run the purifier above 15"};
+    case Metric::PM10: return {"µg/m³ PM10", 0, 60, 45, "45 µg/m³", "Dust and coarse particles"};
+    case Metric::VOC: return {"VOC index", 0, 400, lim::kVocAct, "250", "100 is normal for this room"};
+    case Metric::NOx: return {"NOx index", 0, 100, lim::kNoxAct, "50", "1 is normal"};
+    case Metric::HCHO: return {"ppb formaldehyde", 0, 120, lim::kHchoAct, "80 ppb", "Air out the room above 80"};
+    default: return {"", 0, 100, NAN, "", ""};
+  }
+}
+
+bool plottable(const ScreenData &d, Metric m) {
+  return m < Metric::Temp && (m != Metric::HCHO || d.hcho_fitted);
+}
+
+// ---- The big plot: the reading the advice is about, or the one chosen in the settings ----
 struct Hero {
-  std::string number, unit, note;
-  Metric chart;  // which history the chart shows
-  float lo, hi, limit;
-  std::string limit_label;
+  Metric metric;
+  std::string number, note;
 };
 
 Hero hero(const ScreenData &d) {
   const auto &a = d.advice;
-  const auto &r = d.now;
-  auto num = [](float v, const char *f) { return std::isnan(v) ? std::string("--") : fmt(f, v); };
   if (a.mood == Mood::Starting || a.mood == Mood::NoSensor) {
-    return {"", "No readings yet", a.mood == Mood::NoSensor ? "Check the sensor cable" : "Starting up",
-            Metric::CO2, 400, 1400, lim::kCo2Act, "1,000 ppm"};
+    return {plottable(d, d.big) ? d.big : Metric::CO2, "", a.mood == Mood::NoSensor ? "Check the sensor cable" : "Starting up"};
   }
-  switch (a.topic) {
-    case Topic::CO2:
-      return {air::with_commas(r[Metric::CO2]), "ppm CO₂",
-              a.mood == Mood::Urgent ? "Above 1,500: ventilate now"
-              : a.mood == Mood::Act  ? "Above 1,000: time to ventilate"
-                                     : "Open a window above 1,000",
-              Metric::CO2, 400, 1400, lim::kCo2Act, "1,000 ppm"};
-    case Topic::Particles:
-      return {num(r[Metric::PM25], "%.1f"), "µg/m³ PM2.5",
-              a.mood == Mood::Urgent ? "Above 35: run the purifier on high" : "Above 15: run the purifier",
-              Metric::PM25, 0, 40, lim::kPm25Act, "15 µg/m³"};
-    case Topic::HCHO:
-      return {num(r[Metric::HCHO], "%.0f"), "ppb formaldehyde", "Above 80: air out the room", Metric::HCHO, 0, 120,
-              lim::kHchoAct, "80 ppb"};
-    case Topic::VOC:
-      return {num(r[Metric::VOC], "%.0f"), "VOC index", "100 is normal for this room", Metric::VOC, 0, 400,
-              lim::kVocAct, "250"};
-    case Topic::NOx:
-      return {num(r[Metric::NOx], "%.0f"), "NOx index", "1 is normal", Metric::NOx, 0, 100, lim::kNoxAct, "50"};
-    default:
-      // Nothing to act on: CO2, the reading that moves most through the day
-      return {air::with_commas(r[Metric::CO2]), "ppm CO₂",
-              r[Metric::CO2] > lim::kCo2Watch ? "Starting to build" : "Well ventilated", Metric::CO2, 400, 1400,
-              lim::kCo2Act, "Open a window above 1,000 ppm"};
+  Metric m = Metric::CO2;
+  std::string note;
+  if (plottable(d, d.big)) {
+    m = d.big;
+  } else {   // automatic
+    switch (a.topic) {
+      case Topic::CO2:
+        note = a.mood == Mood::Urgent ? "Above 1,500: ventilate now"
+               : a.mood == Mood::Act  ? "Above 1,000: time to ventilate"
+                                      : "Starting to build";
+        break;
+      case Topic::Particles:
+        m = Metric::PM25;
+        note = a.mood == Mood::Urgent ? "Above 35: run the purifier on high" : "Above 15: run the purifier";
+        break;
+      case Topic::HCHO: m = Metric::HCHO; break;
+      case Topic::VOC: m = Metric::VOC; break;
+      case Topic::NOx: m = Metric::NOx; break;
+      default: break;
+    }
+    if (!plottable(d, m)) m = Metric::CO2;
   }
+  if (note.empty()) note = plot_of(m).note;
+  return {m, item(d, m).value, note};
 }
 
 // ---- 24-hour chart -------------------------------------------------------------
+// labels: 0 none, 3 or 5 times along the bottom. hours: how far back it goes.
 void chart(M5Canvas &c, const ScreenData &d, int x, int y, int w, int h, Metric m, float lo, float hi, float limit,
-           const std::string &limit_label, bool time_labels) {
+           const std::string &limit_label, int labels, int hours = 24) {
   const air::History &hist = *d.history;
-  const int n = std::min(hist.size(), air::History::kSlots);
+  const int slots = std::clamp(hours, 1, 24) * 12;   // 5-minute periods
+  const int n = std::min(hist.size(), slots);
   float top = hi;
   for (int age = 0; age < n; age++) {
     const float v = hist.at(m, age);
     if (!std::isnan(v)) top = std::max(top, v * 1.1f);
   }
-  auto X = [&](int age) { return x + w - 1 - age * (w - 1) / (air::History::kSlots - 1); };
+  auto X = [&](int age) { return x + w - 1 - age * (w - 1) / (slots - 1); };
   auto Y = [&](float v) { return y + h - (int) std::lround(std::clamp((v - lo) / (top - lo), 0.0f, 1.0f) * h); };
 
   bool any = false;
@@ -175,7 +196,7 @@ void chart(M5Canvas &c, const ScreenData &d, int x, int y, int w, int h, Metric 
   if (any && limit > lo && limit < top) {
     const int ly = Y(limit);
     for (int xx = x; xx < x + w; xx += 14) c.fillRect(xx, ly - 1, std::min(7, x + w - xx), 2, grey(5));
-    text(c, sans_small, limit_label, x, ly - 8, 5);
+    if (!limit_label.empty()) text(c, sans_small, limit_label, x, ly - 8, 5);
   }
   // Shaded area and line, broken where there were no readings
   int valid = 0, px = 0, py = 0, ex = -1, ey = -1;
@@ -203,25 +224,27 @@ void chart(M5Canvas &c, const ScreenData &d, int x, int y, int w, int h, Metric 
   if (ex >= 0) {
     c.fillSmoothCircle(ex, ey, 9, grey(15));
     c.fillSmoothCircle(ex, ey, 7, grey(0));
-  } else {
+  } else if (w >= 440) {   // the small plots just stay empty
     text(c, sans_body, "The chart fills in over the next few hours.", x + w / 2, y + h / 2, 6, textdatum_t::middle_center);
   }
-  if (!time_labels) return;
-  for (int k = 0; k <= 4; k++) {
+  if (labels < 2) return;
+  const int last = labels - 1;
+  for (int k = 0; k <= last; k++) {
+    const int minutes_ago = slots * 5 * (last - k) / last;
     std::string label;
-    if (k == 4) {
+    if (k == last) {
       label = "now";
     } else if (d.time_valid) {
       std::tm t = d.local_time;
-      t.tm_hour -= 24 - 6 * k;
+      t.tm_min -= minutes_ago;
       std::mktime(&t);
       label = clock_text(d, t);
     } else {
-      label = std::to_string(24 - 6 * k) + " h ago";
+      label = minutes_ago % 60 ? std::to_string(minutes_ago) + " min ago" : std::to_string(minutes_ago / 60) + " h ago";
     }
-    const textdatum_t datum = k == 0 ? textdatum_t::baseline_left : k == 4 ? textdatum_t::baseline_right
-                                                                           : textdatum_t::baseline_center;
-    text(c, sans_small, label, x + w * k / 4, y + h + 24, 6, datum);
+    const textdatum_t datum = k == 0 ? textdatum_t::baseline_left : k == last ? textdatum_t::baseline_right
+                                                                              : textdatum_t::baseline_center;
+    text(c, sans_small, label, x + w * k / last, y + h + 24, 6, datum);
   }
 }
 
@@ -247,42 +270,38 @@ void top_line(M5Canvas &c, const ScreenData &d) {
   text(c, sans_caps, upper(right), kRight, 38, 6, textdatum_t::baseline_right);
 }
 
-// ---- Bottom row: every other reading ---------------------------------------------
-// Temperature and humidity aren't shown: the sensor sits warm in its enclosure, and a thermometer
-// nearby does that job better. Both still go to the web page and Home Assistant.
-void bottom_row(M5Canvas &c, const ScreenData &d, Metric featured) {
-  std::vector<Item> items;
-  const Metric order[] = {Metric::CO2, Metric::PM25, Metric::PM1, Metric::PM10,
-                          Metric::VOC, Metric::NOx,  Metric::HCHO};
-  for (Metric m : order) {
-    if (m == featured) continue;
-    if (m == Metric::HCHO && !d.hcho_fitted) continue;
-    items.push_back(item(d, m));
-  }
-  if (items.size() < 8 && d.indoor_aqi >= 0) items.push_back({"AQI", std::to_string(d.indoor_aqi), "", false});
-  if (items.size() > 8) items.resize(8);
+// ---- Side plots and the line of everything else ------------------------------------
+const Metric kPlotOrder[] = {Metric::CO2, Metric::PM25, Metric::VOC, Metric::NOx, Metric::HCHO, Metric::PM10, Metric::PM1};
 
-  const int top = 454;
-  c.fillRect(kMargin, top, kRight - kMargin, 2, grey(11));
-  std::vector<int> widths;
-  int total = 0;
-  for (const auto &it : items) {
-    int wv = width(c, serif_value, it.value) + (it.unit.empty() ? 0 : 4 + width(c, sans_small, it.unit));
-    int wl = width(c, sans_caps, upper(it.label));
-    widths.push_back(std::max(wv, wl));
-    total += widths.back();
+// The three side readings: the ones chosen, with any that can't be shown (the same as the big
+// plot, a repeat, or formaldehyde without an SFA40) replaced by the next reading not on screen
+void side_metrics(const ScreenData &d, Metric big, Metric out[3]) {
+  bool used[air::kMetrics] = {};
+  used[(int) big] = true;
+  for (int i = 0; i < 3; i++) {
+    Metric m = d.side[i];
+    if (!plottable(d, m) || used[(int) m]) {
+      for (Metric alt : kPlotOrder)
+        if (plottable(d, alt) && !used[(int) alt]) {
+          m = alt;
+          break;
+        }
+    }
+    used[(int) m] = true;
+    out[i] = m;
   }
-  const int gap = items.size() > 1 ? (kRight - kMargin - total) / (int) (items.size() - 1) : 0;
-  int x = kMargin;
-  for (size_t i = 0; i < items.size(); i++) {
-    const auto &it = items[i];
-    text(c, sans_caps, upper(it.label), x, top + 26, 6);
-    text(c, serif_value, it.value, x, top + 58, 0);
+}
+
+void side_plot(M5Canvas &c, const ScreenData &d, Metric m, int x, int y, int w, int h) {
+  const Item it = item(d, m);
+  const Plot p = plot_of(m);
+  text(c, sans_caps, upper(it.label), x, y + 18, 6);
+  text(c, serif_value, it.value, x + w, y + 22, 0, textdatum_t::baseline_right);
+  if (it.high) {   // past its limit
     const int vw = width(c, serif_value, it.value);
-    if (!it.unit.empty()) text(c, sans_small, it.unit, x + vw + 4, top + 58, 6);
-    if (it.high) c.fillRect(x, top + 64, vw, 3, grey(0));  // past its limit
-    x += widths[i] + gap;
+    c.fillRect(x + w - vw, y + 27, vw, 3, grey(0));
   }
+  chart(c, d, x, y + 32, w, h - 32, m, p.lo, p.hi, p.limit, "", 0, d.span_hours);
 }
 
 void draw_main(M5Canvas &c, const ScreenData &d) {
@@ -293,7 +312,7 @@ void draw_main(M5Canvas &c, const ScreenData &d) {
   const int max_w = kRight - kMargin;
   const bool two_lines = (a.topic != Topic::None || a.mood == Mood::NoSensor) &&
                          width(c, serif_head, a.detail) <= max_w;
-  int y = 100;
+  int y = 96;
   text(c, serif_head, a.headline, kMargin, y, 0);
   std::string sub = a.outdoor;
   if (two_lines) {
@@ -302,21 +321,44 @@ void draw_main(M5Canvas &c, const ScreenData &d) {
   } else {
     sub = a.detail + (a.outdoor.empty() ? "" : " " + a.outdoor);
   }
-  y += 40;
+  y += 36;
   for (const auto &line : wrap(c, sans_body, sub, max_w)) {
     text(c, sans_body, line, kMargin, y, 5);
     y += 27;
   }
 
-  // The featured reading and its day
+  // Left: the big number and its plot. Right: three smaller plots. Bottom: everything else.
+  constexpr int kBottom = 466, kSideX = 608, kMainW = 520;
   const Hero h = hero(d);
-  const int base = h.number.empty() ? 250 : 312;  // no number yet: lift the words beside the chart
-  text(c, serif_hero, h.number, kMargin - 4, base, 0);
-  text(c, sans_strong, h.unit, kMargin, base + 36, 0);
-  text(c, sans_note, h.note, kMargin, base + 60, 5);
-  chart(c, d, 360, std::max(y + 18, 226), 560, 150, h.chart, h.lo, h.hi, h.limit, h.limit_label, true);
+  const Plot p = plot_of(h.metric);
+  const int base = y + 76;
+  if (h.number.empty()) {
+    text(c, sans_strong, "No readings yet", kMargin, base, 0);
+  } else {
+    text(c, serif_hero, h.number, kMargin - 4, base, 0);
+    text(c, sans_strong, p.unit, kMargin + width(c, serif_hero, h.number) + 8, base, 0);
+  }
+  text(c, sans_note, h.note, kMargin, base + 30, 5);
+  const int chart_y = base + 52;
+  chart(c, d, kMargin, chart_y, kMainW, kBottom - chart_y, h.metric, p.lo, p.hi, p.limit, p.limit_label, 5,
+        d.span_hours);
 
-  bottom_row(c, d, h.number.empty() ? Metric::Count : h.chart);
+  Metric side[3];
+  side_metrics(d, h.metric, side);
+  const int side_top = y - 10, side_h = (kBottom + 2 - side_top) / 3;
+  c.fillRect(kSideX - 24, side_top + 6, 2, kBottom + 26 - side_top - 6, grey(12));
+  for (int i = 0; i < 3; i++) side_plot(c, d, side[i], kSideX, side_top + i * side_h, kRight - kSideX, side_h - 14);
+
+  // Readings without a plot, in one line
+  std::string rest;
+  auto add = [&](const std::string &part) { rest += (rest.empty() ? "" : " · ") + part; };
+  for (Metric m : kPlotOrder) {
+    if (!plottable(d, m) || m == h.metric || m == side[0] || m == side[1] || m == side[2]) continue;
+    const Item it = item(d, m);
+    add(std::string(it.label) + " " + it.value + (it.unit.empty() ? "" : " " + it.unit));
+  }
+  if (d.indoor_aqi >= 0) add("AQI " + std::to_string(d.indoor_aqi));
+  text(c, sans_small, rest, kMargin, 524, 6);
 }
 
 void trend_block(M5Canvas &c, const ScreenData &d, int y, const char *title, const char *unit, Metric m, float lo,
@@ -337,7 +379,7 @@ void trend_block(M5Canvas &c, const ScreenData &d, int y, const char *title, con
     text(c, sans_small, "now " + v(now) + " · low " + v(mn) + " · high " + v(mx) + " " + unit, kRight, y, 5,
          textdatum_t::baseline_right);
   }
-  chart(c, d, kMargin, y + 30, kRight - kMargin, 76, m, lo, hi, limit, limit_label, labels);
+  chart(c, d, kMargin, y + 30, kRight - kMargin, 76, m, lo, hi, limit, limit_label, labels ? 5 : 0);
 }
 
 void draw_trends(M5Canvas &c, const ScreenData &d) {
@@ -368,7 +410,8 @@ std::string signature(const ScreenData &d) {
   std::string s = std::to_string((int) d.page) + '|' + (d.wifi_ok ? "w" : "-") + '|' +
                   std::to_string(d.outdoor.ok ? d.outdoor.aqi : -1) + '|' + d.advice.headline + '|' + d.advice.detail +
                   '|' + d.advice.outdoor + '|' + std::to_string(d.history ? d.history->version() : 0) + '|' +
-                  std::to_string(d.indoor_aqi);
+                  std::to_string(d.indoor_aqi) + '|' + std::to_string((int) d.big) + std::to_string((int) d.side[0]) +
+                  std::to_string((int) d.side[1]) + std::to_string((int) d.side[2]) + '|' + std::to_string(d.span_hours);
   if (d.time_valid) s += '|' + std::to_string(d.local_time.tm_yday) + clock_text(d, d.local_time);
   for (int m = 0; m < air::kMetrics; m++)
     if ((Metric) m != Metric::Temp && (Metric) m != Metric::Humidity) s += '|' + item(d, (Metric) m).value;

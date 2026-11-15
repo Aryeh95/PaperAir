@@ -57,6 +57,11 @@ void settings_load() {
   settings.clock_24h = p.getBool("clk24", config::kClock24h);
   settings.voc_alerts = p.getBool("voc_al", true);
   settings.co2_alerts = p.getBool("co2_al", true);
+  settings.plot_big = p.getInt("pl_big", -1);
+  settings.plot_side[0] = p.getInt("pl_s1", 2);
+  settings.plot_side[1] = p.getInt("pl_s2", 4);
+  settings.plot_side[2] = p.getInt("pl_s3", 5);
+  settings.plot_hours = p.getInt("pl_hrs", 24);
   settings.time_zone = p.getString("tz", config::kTimeZone);
   settings.mqtt_host = p.getString("mq_host", MQTT_HOST);
   settings.mqtt_port = p.getInt("mq_port", MQTT_PORT);
@@ -86,6 +91,11 @@ void settings_save() {
   p.putBool("clk24", settings.clock_24h);
   p.putBool("voc_al", settings.voc_alerts);
   p.putBool("co2_al", settings.co2_alerts);
+  p.putInt("pl_big", settings.plot_big);
+  p.putInt("pl_s1", settings.plot_side[0]);
+  p.putInt("pl_s2", settings.plot_side[1]);
+  p.putInt("pl_s3", settings.plot_side[2]);
+  p.putInt("pl_hrs", settings.plot_hours);
   p.putString("tz", settings.time_zone);
   p.putString("mq_host", settings.mqtt_host);
   p.putInt("mq_port", settings.mqtt_port);
