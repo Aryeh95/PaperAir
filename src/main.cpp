@@ -68,7 +68,11 @@ bool redraw_now = true, clean_now = true;
 bool setup_mode = false;
 void join_wifi();
 unsigned long setup_since = 0;
-unsigned long wifi_begin_ms = 0;
+unsigned long wifi_begin_ms = 0;   // the last join attempt
+unsigned long wifi_lost_ms = 0;    // when the Wi-Fi went (or boot, if it never came)
+constexpr unsigned long kRetryMs = 30UL * 1000UL;            // rejoin attempts while the Wi-Fi is gone
+constexpr unsigned long kSetupRetryMs = 2UL * 60UL * 1000UL; // ... and while the hotspot is up
+constexpr unsigned long kHotspotAfterMs = 3UL * 60UL * 1000UL;   // without Wi-Fi this long: open the hotspot
 DNSServer dns;
 constexpr const char *kSetupSsid = "PaperAir-Setup", *kSetupPassword = "paperair";
 constexpr unsigned long kSetupTimeoutMs = 15UL * 60UL * 1000UL;   // then back to trying the Wi-Fi
@@ -77,8 +81,12 @@ void enter_setup() {
   if (setup_mode) return;
   setup_mode = true;
   setup_since = millis();
+  // The library's own reconnecting keeps the radio hopping channels, and the hotspot can't be seen
+  // while it does; keep_connected() retries the saved network every 2 minutes instead
+  WiFi.setAutoReconnect(false);
+  if (WiFi.status() != WL_CONNECTED) WiFi.disconnect(false);
   WiFi.mode(settings.have_wifi() ? WIFI_AP_STA : WIFI_AP);
-  WiFi.softAP(kSetupSsid, kSetupPassword);
+  if (!WiFi.softAP(kSetupSsid, kSetupPassword)) Serial.println("Setup mode: the hotspot didn't start");
   dns.start(53, "*", WiFi.softAPIP());   // every name resolves to us, so phones open the portal
   Serial.printf("Setup mode: join %s (password %s), then open http://%s/\n", kSetupSsid, kSetupPassword,
                 WiFi.softAPIP().toString().c_str());
@@ -91,7 +99,9 @@ void leave_setup() {
   dns.stop();
   WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_STA);
-  if (settings.have_wifi()) join_wifi();
+  WiFi.setAutoReconnect(true);
+  wifi_lost_ms = millis();   // a fresh 3 minutes of trying before the hotspot comes back
+  if (settings.have_wifi() && WiFi.status() != WL_CONNECTED) join_wifi();
   redraw_now = true;
 }
 
@@ -213,10 +223,20 @@ void keep_connected() {
   if (connected != was_connected) {
     Serial.println(connected ? "Wi-Fi connected, IP " + WiFi.localIP().toString() : String("Wi-Fi lost"));
     was_connected = connected;
+    if (!connected) wifi_lost_ms = millis();
   }
   if (!connected) {
-    // No Wi-Fi to join, or a minute of failing to join it: open the setup hotspot as well
-    if (!setup_mode && (!settings.have_wifi() || elapsed(wifi_begin_ms, 60UL * 1000UL))) enter_setup();
+    if (!settings.have_wifi()) {
+      enter_setup();
+      return;
+    }
+    // Keep trying the saved network, and open the setup hotspot only after 3 minutes without it,
+    // so a router restart or a mesh hand-over doesn't leave the screen asking to be set up
+    if (elapsed(wifi_begin_ms, setup_mode ? kSetupRetryMs : kRetryMs)) {
+      Serial.println("Wi-Fi: trying again");
+      join_wifi();
+    }
+    if (!setup_mode && elapsed(wifi_lost_ms, kHotspotAfterMs)) enter_setup();
     return;
   }
   if (setup_mode && settings.have_wifi() && elapsed(setup_since, 60UL * 1000UL)) leave_setup();   // joined after all
@@ -306,8 +326,11 @@ ui::ScreenData screen_data() {
   if (d.time_valid) localtime_r(&t, &d.local_time);
   d.page = page;
   if (setup_mode) {
-    d.advice.headline = "Set me up.";
-    d.advice.detail = std::string("On your phone, join the Wi-Fi network ") + kSetupSsid + " (password " + kSetupPassword + ").";
+    // Lost the saved network, or never had one (or G3 was held)
+    const bool lost = settings.have_wifi() && !d.wifi_ok;
+    d.advice.headline = lost ? "Can't reach the Wi-Fi." : "Set me up.";
+    d.advice.detail = (lost ? "Still trying " + std::string(settings.ssid.c_str()) + ". To change it, join " : std::string("On your phone, join the Wi-Fi network ")) +
+                      kSetupSsid + " (password " + kSetupPassword + ").";
     d.advice.outdoor = "A setup page opens. If it doesn't, go to http://" + std::string(WiFi.softAPIP().toString().c_str()) + "/";
   }
   return d;
