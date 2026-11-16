@@ -317,6 +317,7 @@ void handle_settings_page() {
   page.replace("%PL_S2%", String(settings.plot_side[1]));
   page.replace("%PL_S3%", String(settings.plot_side[2]));
   page.replace("%PL_HRS%", String(settings.plot_hours));
+  page.replace("%PL_FIT_SEL%", settings.plot_fit ? "checked" : "");
   page.replace("%T_OFF%", String(settings.temperature_offset_c, 1));
   page.replace("%TZ%", html_escape(settings.time_zone));
   page.replace("%MQ_HOST%", html_escape(settings.mqtt_host));
@@ -384,6 +385,7 @@ void handle_settings_post() {
     settings.plot_side[2] = metric(server.arg("pl_s3"), 5);
     const int hours = server.arg("pl_hrs").toInt();
     settings.plot_hours = hours == 6 || hours == 12 ? hours : 24;
+    settings.plot_fit = server.arg("pl_fit") == "1";
   }
   settings.temperature_offset_c = server.arg("t_off").toFloat();
   String tz = server.arg("tz");

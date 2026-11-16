@@ -38,6 +38,7 @@ struct ScreenData {
   air::Metric big = air::Metric::Count;
   air::Metric side[3] = {air::Metric::PM25, air::Metric::VOC, air::Metric::NOx};
   int span_hours = 24;                  // how far back the main page's plots go: 6, 12 or 24
+  bool fit_scale = false;               // plots scaled to their data, not from zero to past the limit
 };
 
 void draw(M5Canvas &canvas, const ScreenData &d);

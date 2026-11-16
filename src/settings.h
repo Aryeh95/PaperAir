@@ -21,6 +21,7 @@ struct Settings {
   int plot_big = -1;
   int plot_side[3] = {2, 4, 5};             // PM2.5, VOC, NOx
   int plot_hours = 24;                      // 6, 12 or 24
+  bool plot_fit = false;                    // scale the plots to their data
   String time_zone;
   String mqtt_host, mqtt_user, mqtt_password;   // Home Assistant's MQTT broker; empty host = off
   int mqtt_port = 1883;

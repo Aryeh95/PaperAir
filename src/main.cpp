@@ -319,6 +319,7 @@ ui::ScreenData screen_data() {
   d.big = metric(settings.plot_big);
   for (int i = 0; i < 3; i++) d.side[i] = metric(settings.plot_side[i]);
   d.span_hours = settings.plot_hours == 6 || settings.plot_hours == 12 ? settings.plot_hours : 24;
+  d.fit_scale = settings.plot_fit;
   const float pm25 = d.now[Metric::PM25];
   d.indoor_aqi = std::isnan(pm25) ? -1 : air::aqi_from_pm25(pm25);
   d.hcho_fitted = sfa40.found();

@@ -132,6 +132,7 @@ int main() {
            d.side[1] = Metric::HCHO;
            d.side[2] = Metric::VOC;
            d.span_hours = 6;
+           d.fit_scale = true;
          });
   render(c, "trends", Day{}, clean, [](ui::ScreenData &d, air::Readings &) { d.page = ui::Page::Trends; });
   return 0;

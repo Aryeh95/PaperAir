@@ -175,55 +175,123 @@ Hero hero(const ScreenData &d) {
 }
 
 // ---- 24-hour chart -------------------------------------------------------------
-// labels: 0 none, 3 or 5 times along the bottom. hours: how far back it goes.
+// The smallest range a chart scaled to its data shows, so sensor noise isn't blown up into waves
+float min_span(Metric m) {
+  switch (m) {
+    case Metric::CO2: return 150;
+    case Metric::PM1:
+    case Metric::PM25:
+    case Metric::PM10: return 4;
+    case Metric::VOC: return 30;
+    case Metric::NOx: return 5;
+    case Metric::HCHO: return 10;
+    default: return 1;
+  }
+}
+
+std::string value_text(Metric m, float v) {
+  if (m == Metric::CO2) return air::with_commas(v);
+  return fmt(m == Metric::PM1 || m == Metric::PM25 || m == Metric::PM10 ? "%.1f" : "%.0f", v);
+}
+
+// labels: 0 none, 3 or 5 times along the bottom. hours: how far back it goes. thick: the line, px.
+// range: write the period's low and high above the chart (when it's scaled to the data).
 void chart(M5Canvas &c, const ScreenData &d, int x, int y, int w, int h, Metric m, float lo, float hi, float limit,
-           const std::string &limit_label, int labels, int hours = 24) {
+           const std::string &limit_label, int labels, int hours = 24, int thick = 2, bool range = false) {
   const air::History &hist = *d.history;
   const int slots = std::clamp(hours, 1, 24) * 12;   // 5-minute periods
   const int n = std::min(hist.size(), slots);
-  float top = hi;
-  for (int age = 0; age < n; age++) {
-    const float v = hist.at(m, age);
-    if (!std::isnan(v)) top = std::max(top, v * 1.1f);
+
+  // Averaged into steps at least 3 px wide, then lightly smoothed: drawn point by point, the
+  // sensor's 5-minute noise made the line look scribbled
+  const int per = std::max(1, (int) std::ceil(slots * 3.0f / w));   // 5-minute periods a step
+  const int steps = (slots + per - 1) / per;                         // step 0 is the newest
+  std::vector<float> avg(steps, NAN), sm(steps, NAN);
+  float vmin = INFINITY, vmax = -INFINITY;
+  for (int s = 0; s < steps; s++) {
+    float sum = 0;
+    int cnt = 0;
+    for (int age = s * per; age < std::min(n, (s + 1) * per); age++) {
+      const float v = hist.at(m, age);
+      if (std::isnan(v)) continue;
+      sum += v;
+      cnt++;
+      vmin = std::min(vmin, v);
+      vmax = std::max(vmax, v);
+    }
+    if (cnt) avg[s] = sum / cnt;
   }
-  auto X = [&](int age) { return x + w - 1 - age * (w - 1) / (slots - 1); };
+  for (int s = 0; s < steps; s++) {
+    if (std::isnan(avg[s])) continue;
+    float sum = 2 * avg[s], wsum = 2;
+    for (int nb : {s - 1, s + 1})
+      if (nb >= 0 && nb < steps && !std::isnan(avg[nb])) {
+        sum += avg[nb];
+        wsum += 1;
+      }
+    sm[s] = sum / wsum;
+  }
+  const bool any = vmin <= vmax;
+
+  // The scale: from the reading's usual range up to its limit, or fitted to the data
+  float top = hi;
+  if (any && d.fit_scale) {
+    const float span = std::max(vmax - vmin, min_span(m));
+    const float mid = (vmax + vmin) / 2;
+    lo = std::max(0.0f, mid - span * 0.6f);
+    top = lo + span * 1.35f;   // headroom, so the newest point's dot clears the value above the plot
+  } else if (any) {
+    top = std::max(hi, vmax * 1.1f);
+  }
+  auto X = [&](int step) { return x + w - 1 - step * per * (w - 1) / (slots - 1); };
   auto Y = [&](float v) { return y + h - (int) std::lround(std::clamp((v - lo) / (top - lo), 0.0f, 1.0f) * h); };
 
-  bool any = false;
-  for (int age = 0; age < n && !any; age++) any = !std::isnan(hist.at(m, age));
-
-  // Limit, dashed, under the data
+  // Limit, dashed, under the data (only when it's in range)
   if (any && limit > lo && limit < top) {
     const int ly = Y(limit);
     for (int xx = x; xx < x + w; xx += 14) c.fillRect(xx, ly - 1, std::min(7, x + w - xx), 2, grey(5));
     if (!limit_label.empty()) text(c, sans_small, limit_label, x, ly - 8, 5);
   }
-  // Shaded area and line, broken where there were no readings
-  int valid = 0, px = 0, py = 0, ex = -1, ey = -1;
-  for (int age = n - 1; age >= 0; age--) {
-    const float v = hist.at(m, age);
-    if (std::isnan(v)) {
-      valid = 0;
+  if (any && range) {
+    text(c, sans_small, "low " + value_text(m, vmin) + " · high " + value_text(m, vmax), x + w, y - 8, 6,
+         textdatum_t::baseline_right);
+  }
+
+  // The line's height in each pixel column (-1: no reading), joined straight between steps
+  std::vector<int> col(w, -1);
+  int px = -1, py = 0, ex = -1, ey = -1;
+  for (int s = steps - 1; s >= 0; s--) {
+    if (std::isnan(sm[s])) {
+      px = -1;
       continue;
     }
-    const int cx = X(age), cy = Y(v);
-    if (valid) {
-      for (int xi = px; xi <= cx; xi++) {
-        const int yi = py + (cy - py) * (xi - px) / std::max(1, cx - px);
-        c.drawFastVLine(xi, yi, y + h - yi, grey(12));
-      }
-      c.drawWideLine(px, py, cx, cy, 1.6f, grey(2));
-    }
+    const int cx = X(s), cy = Y(sm[s]);
+    if (px < 0) col[cx - x] = cy;
+    for (int xi = px < 0 ? cx : px; xi <= cx; xi++) col[xi - x] = py + (cy - py) * (xi - px) / std::max(1, cx - px);
+    if (px < 0) col[cx - x] = cy;
     px = cx;
     py = cy;
     ex = cx;
     ey = cy;
-    valid++;
+  }
+  // Pale fill, then a hard-edged line of even thickness (no anti-aliasing: on 16 greys that made
+  // it come out 1 px here and 2 px there)
+  for (int i = 0; i < w; i++)
+    if (col[i] >= 0) c.drawFastVLine(x + i, col[i], y + h - col[i], grey(13));
+  for (int i = 0; i < w; i++) {
+    if (col[i] < 0) continue;
+    int a = col[i], b = col[i];
+    if (i > 0 && col[i - 1] >= 0) {
+      a = std::min(a, col[i - 1]);
+      b = std::max(b, col[i - 1]);
+    }
+    c.drawFastVLine(x + i, a - thick / 2, b - a + thick, grey(0));
   }
   c.fillRect(x, y + h, w, 2, grey(8));
   if (ex >= 0) {
-    c.fillSmoothCircle(ex, ey, 9, grey(15));
-    c.fillSmoothCircle(ex, ey, 7, grey(0));
+    const int r = thick >= 3 ? 8 : 6;
+    c.fillSmoothCircle(ex, ey, r + 2, grey(15));
+    c.fillSmoothCircle(ex, ey, r, grey(0));
   } else if (w >= 440) {   // the small plots just stay empty
     text(c, sans_body, "The chart fills in over the next few hours.", x + w / 2, y + h / 2, 6, textdatum_t::middle_center);
   }
@@ -301,7 +369,7 @@ void side_plot(M5Canvas &c, const ScreenData &d, Metric m, int x, int y, int w, 
     const int vw = width(c, serif_value, it.value);
     c.fillRect(x + w - vw, y + 27, vw, 3, grey(0));
   }
-  chart(c, d, x, y + 32, w, h - 32, m, p.lo, p.hi, p.limit, "", 0, d.span_hours);
+  chart(c, d, x, y + 32, w, h - 32, m, p.lo, p.hi, p.limit, "", 0, d.span_hours, 2);
 }
 
 void draw_main(M5Canvas &c, const ScreenData &d) {
@@ -341,7 +409,7 @@ void draw_main(M5Canvas &c, const ScreenData &d) {
   text(c, sans_note, h.note, kMargin, base + 30, 5);
   const int chart_y = base + 52;
   chart(c, d, kMargin, chart_y, kMainW, kBottom - chart_y, h.metric, p.lo, p.hi, p.limit, p.limit_label, 5,
-        d.span_hours);
+        d.span_hours, 3, d.fit_scale);
 
   Metric side[3];
   side_metrics(d, h.metric, side);
@@ -411,7 +479,7 @@ std::string signature(const ScreenData &d) {
                   std::to_string(d.outdoor.ok ? d.outdoor.aqi : -1) + '|' + d.advice.headline + '|' + d.advice.detail +
                   '|' + d.advice.outdoor + '|' + std::to_string(d.history ? d.history->version() : 0) + '|' +
                   std::to_string(d.indoor_aqi) + '|' + std::to_string((int) d.big) + std::to_string((int) d.side[0]) +
-                  std::to_string((int) d.side[1]) + std::to_string((int) d.side[2]) + '|' + std::to_string(d.span_hours);
+                  std::to_string((int) d.side[1]) + std::to_string((int) d.side[2]) + '|' + std::to_string(d.span_hours) + (d.fit_scale ? "f" : "");
   if (d.time_valid) s += '|' + std::to_string(d.local_time.tm_yday) + clock_text(d, d.local_time);
   for (int m = 0; m < air::kMetrics; m++)
     if ((Metric) m != Metric::Temp && (Metric) m != Metric::Humidity) s += '|' + item(d, (Metric) m).value;

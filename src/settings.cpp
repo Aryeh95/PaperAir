@@ -62,6 +62,7 @@ void settings_load() {
   settings.plot_side[1] = p.getInt("pl_s2", 4);
   settings.plot_side[2] = p.getInt("pl_s3", 5);
   settings.plot_hours = p.getInt("pl_hrs", 24);
+  settings.plot_fit = p.getBool("pl_fit", false);
   settings.time_zone = p.getString("tz", config::kTimeZone);
   settings.mqtt_host = p.getString("mq_host", MQTT_HOST);
   settings.mqtt_port = p.getInt("mq_port", MQTT_PORT);
@@ -96,6 +97,7 @@ void settings_save() {
   p.putInt("pl_s2", settings.plot_side[1]);
   p.putInt("pl_s3", settings.plot_side[2]);
   p.putInt("pl_hrs", settings.plot_hours);
+  p.putBool("pl_fit", settings.plot_fit);
   p.putString("tz", settings.time_zone);
   p.putString("mq_host", settings.mqtt_host);
   p.putInt("mq_port", settings.mqtt_port);
