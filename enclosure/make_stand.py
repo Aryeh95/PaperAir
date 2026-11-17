@@ -11,8 +11,8 @@ The FPC cable leaves the PaperDIY through a slot in its back plate, runs down be
 groove at the back of the slot, and drops into the base. A slim spine behind the PaperDIY hides
 the cable.
 
-Parts (all print without supports):
-  stand_base.stl         printed upside down, top face on the bed
+Parts:
+  stand_base.stl         printed upside down, top face on the bed (supports touching build plate only, under the 4 mm front step)
   stand_bottom.stl       the bottom plate, 4 x M3 countersunk screws into M3 heat-set inserts
   stand_spine.stl        printed lying on its back; push it into the socket behind the slot
   back_plate_fpc.stl     only with --oem: M5Stack's back plate with a slot for the FPC cable

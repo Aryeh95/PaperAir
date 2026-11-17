@@ -10,7 +10,7 @@ Three ways to house the PaperDIY with the sensors:
 - **[Desk stand](#desk-stand)**: a low base that the cased PaperDIY stands in. Bulkier than the
   saddle.
 
-Both need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's buttons end up on top.
+All three need `kFlipScreen = true` in `include/config.h`, because the PaperDIY's buttons end up on top.
 
 ## Saddle
 

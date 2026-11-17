@@ -68,12 +68,13 @@ parts. Power it from a 3.3 V supply pin, not a GPIO.
 
 ### Enclosures
 
-[`enclosure/`](enclosure) has two 3D-printed designs, each with the SEN66 and SFA40 inside, plus
+[`enclosure/`](enclosure) has three 3D-printed designs, each with the SEN66 and SFA40 inside, plus
 the FPC wiring:
+- **A saddle** (recommended) for a PaperDIY in M5Stack's own case, with the sensors in a foot behind it.
 - **A slim frame** for the bare board and panel.
 - **A desk stand** for a PaperDIY in M5Stack's case.
 
-![The slim frame](enclosure/render_frame.png)
+![The saddle](enclosure/render_saddle.png)
 
 ## Setting it up
 
@@ -134,10 +135,10 @@ YAML to write:
 
 Within a few seconds a **PaperAir** device appears under the MQTT integration with CO₂, PM1, PM2.5,
 PM10, VOC and NOx index, formaldehyde (with an SFA40), temperature, humidity, indoor and outdoor
-AQI, outdoor PM2.5, the advice headline, an **Air status** of `fresh` / `fine` / `act` / `urgent`
-for automations, and the Wi-Fi signal. Three buttons refresh the screen, switch its page and
-restart it. Readings are sent every 30 seconds; if PaperAir goes offline its sensors show as
-unavailable. The device card on the web page shows whether it is connected.
+AQI, outdoor PM2.5, the advice headline, an **Air status** of `starting` / `no_sensor` / `fresh` /
+`fine` / `act` / `urgent` for automations, and the Wi-Fi signal. Three buttons refresh the screen,
+switch its page and restart it. Readings are sent every 30 seconds; if PaperAir goes offline its
+sensors show as unavailable. The device card on the web page shows whether it is connected.
 
 The JSON API below still works too, for anything that would rather poll.
 
@@ -159,8 +160,8 @@ time.
 
 ### Setup mode
 
-The hotspot opens by itself when there is no Wi-Fi saved, when joining keeps failing for a
-minute, or when the **G3** button is held for 3 seconds (hold it again, or wait 15 minutes, to
+The hotspot opens by itself when there is no Wi-Fi saved, when joining keeps failing for 3
+minutes, or when the **G3** button is held for 3 seconds (hold it again, or wait 15 minutes, to
 close it). While it is open the screen says how to reach it.
 
 ### Buttons
@@ -176,8 +177,8 @@ cut, with a gap for the time the PaperDIY was off.
 ### Temperature offset
 
 Once the SEN66 is in its enclosure, compare its temperature with a thermometer for an hour. Put the
-difference in the settings page (or `kTemperatureOffsetC` in `config.h`). Humidity is corrected to
-match.
+adjustment in the settings page (or `kTemperatureOffsetC` in `config.h`, for example `-2.0` if it
+reads 2 °C warm). Humidity is corrected to match.
 
 ## Outdoor air
 

@@ -17,7 +17,9 @@ jobs:
       - run: pip install platformio
       - name: Unit tests
         run: pio test -e native
-      - name: Firmware
+      - name: Firmware (without secrets.h)
+        run: pio run -e paperdiy
+      - name: Firmware (with secrets.example.h)
         run: |
           cp include/secrets.example.h include/secrets.h
           pio run -e paperdiy

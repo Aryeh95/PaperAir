@@ -11,7 +11,7 @@ Parts (all print without supports):
   frame_back.stl      the back plate and the sensor foot, standing on its bottom face (the one that
                       sits on the desk), so the back wall and the foot print as walls, not a ceiling.
   frame_backer.stl    a flat plate behind the panel, which is flexible: it holds it flat against the
-                      lip. Printed flat; its edges clip into grooves in the bezel.
+                      lip. Printed flat; it drops into the pocket and two ribs on the back hold it.
   frame_fit_test.stl  the first 2.4 mm of the bezel all round, plus its top right corner at full
                       depth: shows the lip, the pocket, the buttons and the USB-C opening in
                       about an hour.
