@@ -83,8 +83,6 @@ std::string clock_text(const ScreenData &d, const std::tm &t) {
   return buf;
 }
 
-float temp_display(const ScreenData &d, float c) { return d.fahrenheit ? c * 9 / 5 + 32 : c; }
-
 // ---- Readings: how each one is labelled and formatted -----------------------
 struct Item {
   const char *label;
@@ -104,10 +102,6 @@ Item item(const ScreenData &d, Metric m) {
     case Metric::VOC: return {"VOC", val("%.0f"), "", d.voc_alerts && v >= lim::kVocAct};
     case Metric::NOx: return {"NOx", val("%.0f"), "", v >= lim::kNoxAct};
     case Metric::HCHO: return {"HCHO", val("%.0f"), "ppb", v > lim::kHchoAct};
-    case Metric::Temp:
-      return {"Temp", none ? "--" : fmt("%.1f", temp_display(d, v)), d.fahrenheit ? "°F" : "°C", false};
-    case Metric::Humidity:
-      return {"Humidity", val("%.0f"), "%", v < lim::kHumidityLow || v > lim::kHumidityHigh};
     default: return {"", "", "", false};
   }
 }
@@ -120,13 +114,17 @@ struct Plot {
   const char *note;       // under the big number when there's nothing to act on
 };
 
-Plot plot_of(Metric m) {
+Plot plot_of(const ScreenData &d, Metric m) {
   switch (m) {
-    case Metric::CO2: return {"ppm CO₂", 400, 1400, lim::kCo2Act, "1,000 ppm", "Open a window above 1,000"};
+    case Metric::CO2:
+      return {"ppm CO₂", 400, 1400, d.co2_alerts ? lim::kCo2Act : NAN, d.co2_alerts ? "1,000 ppm" : "",
+              d.co2_alerts ? "Open a window above 1,000" : "Outdoor air is around 420"};
     case Metric::PM1: return {"µg/m³ PM1", 0, 40, NAN, "", "Very fine particles"};
     case Metric::PM25: return {"µg/m³ PM2.5", 0, 40, lim::kPm25Act, "15 µg/m³", "Run the purifier above 15"};
     case Metric::PM10: return {"µg/m³ PM10", 0, 60, 45, "45 µg/m³", "Dust and coarse particles"};
-    case Metric::VOC: return {"VOC index", 0, 400, lim::kVocAct, "250", "100 is normal for this room"};
+    case Metric::VOC:
+      return {"VOC index", 0, 400, d.voc_alerts ? lim::kVocAct : NAN, d.voc_alerts ? "250" : "",
+              "100 is normal for this room"};
     case Metric::NOx: return {"NOx index", 0, 100, lim::kNoxAct, "50", "1 is normal"};
     case Metric::HCHO: return {"ppb formaldehyde", 0, 120, lim::kHchoAct, "80 ppb", "Air out the room above 80"};
     default: return {"", 0, 100, NAN, "", ""};
@@ -170,7 +168,7 @@ Hero hero(const ScreenData &d) {
     }
     if (!plottable(d, m)) m = Metric::CO2;
   }
-  if (note.empty()) note = plot_of(m).note;
+  if (note.empty()) note = plot_of(d, m).note;
   return {m, item(d, m).value, note};
 }
 
@@ -362,7 +360,7 @@ void side_metrics(const ScreenData &d, Metric big, Metric out[3]) {
 
 void side_plot(M5Canvas &c, const ScreenData &d, Metric m, int x, int y, int w, int h) {
   const Item it = item(d, m);
-  const Plot p = plot_of(m);
+  const Plot p = plot_of(d, m);
   text(c, sans_caps, upper(it.label), x, y + 18, 6);
   text(c, serif_value, it.value, x + w, y + 22, 0, textdatum_t::baseline_right);
   if (it.high) {   // past its limit
@@ -398,7 +396,7 @@ void draw_main(M5Canvas &c, const ScreenData &d) {
   // Left: the big number and its plot. Right: three smaller plots. Bottom: everything else.
   constexpr int kBottom = 466, kSideX = 608, kMainW = 520;
   const Hero h = hero(d);
-  const Plot p = plot_of(h.metric);
+  const Plot p = plot_of(d, h.metric);
   const int base = y + 76;
   if (h.number.empty()) {
     text(c, sans_strong, "No readings yet", kMargin, base, 0);
@@ -423,7 +421,7 @@ void draw_main(M5Canvas &c, const ScreenData &d) {
   for (Metric m : kPlotOrder) {
     if (!plottable(d, m) || m == h.metric || m == side[0] || m == side[1] || m == side[2]) continue;
     const Item it = item(d, m);
-    add(std::string(it.label) + " " + it.value + (it.unit.empty() ? "" : " " + it.unit));
+    add(std::string(it.label) + " " + it.value + (it.unit.empty() || it.value == "--" ? "" : " " + it.unit));
   }
   if (d.indoor_aqi >= 0) add("AQI " + std::to_string(d.indoor_aqi));
   text(c, sans_small, rest, kMargin, 524, 6);
@@ -452,13 +450,15 @@ void trend_block(M5Canvas &c, const ScreenData &d, int y, const char *title, con
 
 void draw_trends(M5Canvas &c, const ScreenData &d) {
   top_line(c, d);
-  trend_block(c, d, 92, "CO₂", "ppm", Metric::CO2, 400, 1400, lim::kCo2Act, "1,000 ppm", "%.0f", false);
+  trend_block(c, d, 92, "CO₂", "ppm", Metric::CO2, 400, 1400, d.co2_alerts ? lim::kCo2Act : NAN,
+              d.co2_alerts ? "1,000 ppm" : "", "%.0f", false);
   trend_block(c, d, 232, "Fine particles", "µg/m³ PM2.5", Metric::PM25, 0, 30, lim::kPm25Act, "15 µg/m³", "%.1f",
               false);
   if (d.hcho_fitted) {
     trend_block(c, d, 372, "Formaldehyde", "ppb", Metric::HCHO, 0, 100, lim::kHchoAct, "80 ppb", "%.0f", true);
   } else {
-    trend_block(c, d, 372, "VOC index", "", Metric::VOC, 0, 300, lim::kVocAct, "250", "%.0f", true);
+    trend_block(c, d, 372, "VOC index", "", Metric::VOC, 0, 300, d.voc_alerts ? lim::kVocAct : NAN,
+                d.voc_alerts ? "250" : "", "%.0f", true);
   }
 }
 
@@ -479,7 +479,8 @@ std::string signature(const ScreenData &d) {
                   std::to_string(d.outdoor.ok ? d.outdoor.aqi : -1) + '|' + d.advice.headline + '|' + d.advice.detail +
                   '|' + d.advice.outdoor + '|' + std::to_string(d.history ? d.history->version() : 0) + '|' +
                   std::to_string(d.indoor_aqi) + '|' + std::to_string((int) d.big) + std::to_string((int) d.side[0]) +
-                  std::to_string((int) d.side[1]) + std::to_string((int) d.side[2]) + '|' + std::to_string(d.span_hours) + (d.fit_scale ? "f" : "");
+                  std::to_string((int) d.side[1]) + std::to_string((int) d.side[2]) + '|' + std::to_string(d.span_hours) +
+                  (d.fit_scale ? "f" : "") + (d.hcho_fitted ? "h" : "") + (d.co2_alerts ? "c" : "") + (d.voc_alerts ? "v" : "");
   if (d.time_valid) s += '|' + std::to_string(d.local_time.tm_yday) + clock_text(d, d.local_time);
   for (int m = 0; m < air::kMetrics; m++)
     if ((Metric) m != Metric::Temp && (Metric) m != Metric::Humidity) s += '|' + item(d, (Metric) m).value;

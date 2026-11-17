@@ -111,8 +111,8 @@ int main() {
     fprintf(stderr, "could not create the canvas\n");
     return 1;
   }
-  air::Outdoor clean{true, 26, 6.1f};
-  air::Outdoor smoky{true, 168, 88};
+  air::Outdoor clean{true, 26, 6.1f, "PurpleAir"};
+  air::Outdoor smoky{true, 168, 88, "PurpleAir"};
 
   render(c, "co2", Day{}, clean);
   render(c, "fresh", Day{.co2_now = 640, .pm25_now = 3.4f, .hcho_now = 16, .voc_now = 96}, clean);
