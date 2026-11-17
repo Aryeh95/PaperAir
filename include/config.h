@@ -10,8 +10,8 @@ constexpr bool kFahrenheit = true;  // false for Celsius
 constexpr bool kClock24h = false;
 
 // The SEN66 reads a little warm when it sits next to electronics. Measure against a thermometer
-// and put the difference here (degrees C, positive = sensor reads too warm); humidity is
-// corrected to match.
+// and put the adjustment here (degrees C added to the reading, e.g. -2.0 if it reads 2 C too warm);
+// humidity is corrected to match.
 constexpr float kTemperatureOffsetC = 0.0f;
 
 // Turn the picture upside down. True for the enclosures here, which stand the PaperDIY with its

@@ -44,6 +44,9 @@ static void test_aqi_round_trip() {
 
 // ---- Humidity --------------------------------------------------------------
 static void test_humidity_compensation() {
+  TEST_ASSERT_EQUAL_FLOAT(25, compensate_temperature(25, 0));
+  TEST_ASSERT_EQUAL_FLOAT(23, compensate_temperature(25, -2));  // sensor 2 C warm: real temp is lower
+  TEST_ASSERT_TRUE(std::isnan(compensate_temperature(NAN, -2)));
   TEST_ASSERT_EQUAL_FLOAT(40, compensate_humidity(40, 25, 0));
   const float rh = compensate_humidity(40, 25, -2);  // sensor 2 C warm: real RH is higher
   TEST_ASSERT_FLOAT_WITHIN(0.5f, 45.1f, rh);
@@ -157,9 +160,47 @@ static void test_history_save_restore() {
   TEST_ASSERT_EQUAL_FLOAT(590, g.at(Metric::CO2, 6));
   TEST_ASSERT_EQUAL_FLOAT(500, g.at(Metric::CO2, 15));
 
-  // Too old, bad data, or a history that already has finished periods: nothing changes
+  // Back after 20 minutes off, with NTP arriving 11 minutes after boot (two finished post-boot periods + one open)
+  History late;
+  r[Metric::CO2] = 700;
+  late.add(1000, r);
+  r[Metric::CO2] = 710;
+  late.add(History::kBucketMs + 1000, r);
+  r[Metric::CO2] = 720;
+  late.add(History::kBucketMs * 2 + 1000, r);
+  TEST_ASSERT_TRUE(late.restore(buf, n, t + 20 * 60 + 11 * 60, 11 * 60 * 1000));
+  TEST_ASSERT_EQUAL(1 + 2 + 4 + 11, late.size());
+  TEST_ASSERT_EQUAL_FLOAT(720, late.at(Metric::CO2, 0));
+  TEST_ASSERT_EQUAL_FLOAT(710, late.at(Metric::CO2, 1));
+  TEST_ASSERT_EQUAL_FLOAT(700, late.at(Metric::CO2, 2));
+  TEST_ASSERT_TRUE(std::isnan(late.at(Metric::CO2, 3)));
+  TEST_ASSERT_EQUAL_FLOAT(777, late.at(Metric::CO2, 7));
+  TEST_ASSERT_EQUAL_FLOAT(500, late.at(Metric::CO2, 17));
+
+  // Small 1-second rounding across an immediate restart still restores
+  History skew;
+  TEST_ASSERT_TRUE(skew.restore(buf, n, t + 2, 3000));
+
+  // Full 24-hour buffer (288 finished periods) plus an open period (size() == 289) still fits in kSaveSize
+  History full;
+  for (int i = 0; i < History::kSlots; i++) {
+    r[Metric::CO2] = 600 + (i % 100);
+    full.push_for_preview(r);
+  }
+  r[Metric::CO2] = 999;
+  full.add(1000, r);
+  TEST_ASSERT_EQUAL(History::kSlots + 1, full.size());
+  const size_t fn = full.save(buf, sizeof buf, t);
+  TEST_ASSERT_EQUAL(History::kSaveSize, fn);
+  History full_back;
+  TEST_ASSERT_TRUE(full_back.restore(buf, fn, t + 60, 10 * 1000));
+  TEST_ASSERT_EQUAL(History::kSlots, full_back.size());
+  TEST_ASSERT_EQUAL_FLOAT(999, full_back.at(Metric::CO2, 0));
+
+  // Too old, far in the future, bad data, or already restored once: nothing changes
   History x;
   TEST_ASSERT_FALSE(x.restore(buf, n, t + 25 * 3600, 0));
+  TEST_ASSERT_FALSE(x.restore(buf, n, t, 120 * 1000));
   buf[0] ^= 1;
   TEST_ASSERT_FALSE(x.restore(buf, n, t + 60, 0));
   buf[0] ^= 1;
@@ -231,6 +272,11 @@ static void test_advice_states() {
   TEST_ASSERT_EQUAL(Topic::OutdoorSmoke, a.topic);
   TEST_ASSERT_EQUAL_STRING("Keep the windows shut.", a.headline.c_str());
   TEST_ASSERT_TRUE(a.outdoor.empty());
+
+  Outdoor ozone_only{true, 165, NAN, "AirNow"};  // AirNow with no PM2.5 monitor nearby
+  a = advise(room(600, 5), h, ozone_only, true, true);
+  TEST_ASSERT_EQUAL(Topic::OutdoorSmoke, a.topic);
+  TEST_ASSERT_EQUAL_STRING("Keep the windows shut.", a.headline.c_str());
 
   a = advise(room(600, 5, 45, 100, 1, 95), h, outside(26), true, true);
   TEST_ASSERT_EQUAL(Topic::HCHO, a.topic);

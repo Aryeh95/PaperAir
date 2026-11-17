@@ -10,6 +10,12 @@ inline float saturation_vapour_pressure(float t_celsius) {
   return 6.112f * std::exp(17.62f * t_celsius / (243.12f + t_celsius));
 }
 
+// Temperature and relative humidity after a temperature adjustment (t_offset < 0 when the case
+// warms the sensor).
+inline float compensate_temperature(float t_raw, float t_offset) {
+  return std::isnan(t_raw) ? NAN : t_raw + t_offset;
+}
+
 // If the case makes the sensor read warm, correcting only the temperature would leave the
 // relative humidity too low. This keeps the amount of water in the air the same and works out
 // the relative humidity at the corrected temperature.

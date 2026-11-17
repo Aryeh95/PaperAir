@@ -31,7 +31,7 @@ class History {
   // Writes the finished periods, and the current one as if finished, newest first, with the
   // wall-clock time (Unix seconds). Returns the bytes used.
   size_t save(uint8_t *out, size_t cap, uint32_t now_unix) const {
-    const int n = size();
+    const int n = size() < kSlots ? size() : kSlots;
     if (cap < 16 + (size_t) n * kMetrics * sizeof(float)) return 0;
     uint32_t head[4] = {kMagic, (uint32_t) n, now_unix, 0};
     copy_(out, head, 16);
@@ -46,27 +46,41 @@ class History {
     return p - out;
   }
 
-  // Loads what save() wrote, before the first reading has finished a period: the saved periods go
-  // in first, then empty ones for the time the device was off. `now_unix` is the wall-clock time
-  // now and `uptime_ms` how long since boot, so readings taken before the clock was set keep
+  // Loads what save() wrote, placing the saved periods and empty ones for the time the device was
+  // off ahead of any periods recorded since boot. `now_unix` is the wall-clock time now and
+  // `uptime_ms` how long since boot, so readings taken while waiting for the time server keep
   // their place. Returns false, and changes nothing, if the data is unusable or over a day old.
   bool restore(const uint8_t *in, size_t len, uint32_t now_unix, uint32_t uptime_ms) {
-    if (size_ != 0 || len < 16) return false;
+    if (restored_ || size_ >= kSlots || len < 16) return false;
     uint32_t head[4];
     copy_(head, in, 16);
     const uint32_t n = head[1], saved_at = head[2];
-    if (head[0] != kMagic || n > (uint32_t) kSlots || len < 16 + n * kMetrics * sizeof(float)) return false;
-    const uint32_t boot_unix = now_unix - uptime_ms / 1000;
-    if (boot_unix < saved_at) return false;
+    if (head[0] != kMagic || n == 0 || n > (uint32_t) kSlots || len < 16 + n * kMetrics * sizeof(float)) return false;
+    const uint32_t up_s = uptime_ms / 1000;
+    if (now_unix <= up_s) return false;
+    uint32_t boot_unix = now_unix - up_s;
+    if (boot_unix < saved_at) {
+      if (saved_at - boot_unix > 60) return false;  // from a future clock
+      boot_unix = saved_at;                         // small rounding or NTP step across a fast restart
+    }
     const uint32_t gap = (boot_unix - saved_at) / (kBucketMs / 1000);
     if (gap >= (uint32_t) kSlots) return false;
+
+    const int keep_post = size_;  // size_ < kSlots and restored_ is false, so data_[0..keep_post-1] are oldest->newest
+    const int keep_gap = (int) gap < kSlots - keep_post ? (int) gap : kSlots - keep_post;
+    const int keep_saved = (int) n < kSlots - keep_post - keep_gap ? (int) n : kSlots - keep_post - keep_gap;
+    const int shift = keep_saved + keep_gap;
+    for (int i = keep_post - 1; i >= 0; i--) data_[i + shift] = data_[i];
+    for (int i = 0; i < keep_gap; i++) data_[keep_saved + i] = Readings();
     const uint8_t *p = in + 16;
-    for (int age = (int) n - 1; age >= 0; age--) {  // oldest first
-      Readings r;
-      copy_(r.v, p + (size_t) age * kMetrics * sizeof(float), kMetrics * sizeof(float));
-      push_(r);
+    for (int i = 0; i < keep_saved; i++) {
+      const int age = keep_saved - 1 - i;  // oldest of the kept saved periods first
+      copy_(data_[i].v, p + (size_t) age * kMetrics * sizeof(float), kMetrics * sizeof(float));
     }
-    for (uint32_t i = 0; i < gap; i++) push_(Readings());
+    size_ = shift + keep_post;
+    head_ = size_ % kSlots;
+    restored_ = true;
+    version_++;
     return true;
   }
 
@@ -150,6 +164,7 @@ class History {
   Readings data_[kSlots];
   int head_ = 0, size_ = 0;
   bool open_ = false;
+  bool restored_ = false;
   uint32_t bucket_id_ = 0;
   float sum_[kMetrics] = {};
   int n_[kMetrics] = {};

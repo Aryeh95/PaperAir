@@ -40,12 +40,13 @@ enum class Mood {
 };
 
 // What the advice is about; the screen features this reading
-enum class Topic { None, CO2, Particles, VOC, NOx, HCHO, Dry, Humid, OutdoorSmoke };
+enum class Topic { None, CO2, Particles, VOC, NOx, HCHO, OutdoorSmoke };
 
 struct Outdoor {
   bool ok = false;  // a recent reading is available
   int aqi = -1;
-  float pm25 = NAN;
+  float pm25 = NAN;  // NAN when AirNow only has an ozone or PM10 monitor nearby
+  std::string source{};
 };
 
 struct Advice {
@@ -113,9 +114,10 @@ inline Advice advise(const Readings &r, const History &h, const Outdoor &out, bo
     return a;
   }
 
-  const bool outdoor_known = out.ok && !std::isnan(out.pm25);
-  const bool outdoor_clean = outdoor_known && out.pm25 <= kOutdoorClean;
-  const bool outdoor_smoky = outdoor_known && out.pm25 >= kOutdoorSmoky;
+  const bool outdoor_known = out.ok && out.aqi >= 0;
+  const bool have_out_pm25 = outdoor_known && !std::isnan(out.pm25);
+  const bool outdoor_clean = have_out_pm25 ? out.pm25 <= kOutdoorClean : (outdoor_known && out.aqi <= 50);
+  const bool outdoor_smoky = have_out_pm25 ? out.pm25 >= kOutdoorSmoky : (outdoor_known && out.aqi > 100);
   char aqi_txt[24] = "";
   if (outdoor_known) snprintf(aqi_txt, sizeof(aqi_txt), "AQI %d", out.aqi);
 
@@ -147,9 +149,9 @@ inline Advice advise(const Readings &r, const History &h, const Outdoor &out, bo
     a.headline = "Run the air purifier.";
     a.detail = (mood == Mood::Urgent ? "Lots of fine particles indoors (" : "Fine particles are up (") +
                fmt("%.0f", pm25) + " µg/m³).";
-    if (outdoor_known && out.pm25 < pm25 && !outdoor_smoky) {
+    if (have_out_pm25 && out.pm25 < pm25 && !outdoor_smoky) {
       a.outdoor = std::string("Outside is cleaner (") + aqi_txt + "), so opening a window helps too.";
-    } else if (outdoor_known) {
+    } else if (have_out_pm25 || outdoor_smoky) {
       a.outdoor = std::string("Outside is ") + aqi_word(out.aqi) + " (" + aqi_txt + "). Keep the windows shut.";
     }
   };
