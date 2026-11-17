@@ -63,6 +63,7 @@ bool Sen66::read(air::Sen66Values &out) {
 
 // ---- SFA40 ----------------------------------------------------------------------
 bool Sfa40::begin() {
+  found_ = false;
   dev_.command(kSfa40Stop);
   delay(25);
   uint16_t id[3];

@@ -93,6 +93,7 @@ const M=[["co2","CO₂","ppm",0],["pm25","PM2.5","µg/m³",1],["pm10","PM10","µ
 const MOOD=[["Starting up","var(--muted)"],["No sensor","var(--bad)"],["All clear","var(--good)"],["Worth knowing","var(--info)"],["Take action","var(--act)"],["Act now","var(--bad)"]];
 let sel="co2",rng=288,now=null,hist=null,fetched=0;
 const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const f=(v,d)=>v==null?"--":Number(v).toLocaleString(undefined,{maximumFractionDigits:d,minimumFractionDigits:d});
 const dec=k=>M.find(m=>m[0]==k)[3];
 const unit=k=>k=="temp"?(now.fahrenheit?"°F":"°C"):M.find(m=>m[0]==k)[2];
@@ -107,7 +108,7 @@ function tiles(){const t=$("tiles");t.innerHTML="";for(const[k,n,,d]of M){if(k==
 const el=document.createElement("button");el.className="tile"+(k==sel?" sel":"");
 el.innerHTML=`<div class="l"><span>${n}</span>${st?`<span class="st ${st[0]}">${st[1]}</span>`:""}</div><div class="v">${f(v,d)}<span class="u">${unit(k)}</span></div>${hist?spark(hist.metrics[k]||[],st?st[0]:"muted"):""}`;
 el.onclick=()=>{sel=k;tiles();chart()};t.appendChild(el)}}
-function tAt(i){return new Date(Date.now()-(rng-1-i)*hist.interval_s*1000).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}
+function tAt(i){return new Date((fetched||Date.now())-(rng-1-i)*hist.interval_s*1000).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}
 let C=null;
 function chart(){if(!hist)return;const name=M.find(x=>x[0]==sel)[1];$("chartname").textContent=name+" · last "+(rng*5>=60?rng*5/60+" h":rng*5+" min");
 const all=hist.metrics[sel]||[],pad0=Math.max(0,rng-all.length),pts=Array(pad0).fill(null).concat(all.slice(-rng));
@@ -142,8 +143,8 @@ function render(){const a=now.advice,m=MOOD[a.mood]||MOOD[0];$("stamp").textCont
 const pill=$("mood");pill.style.color=m[1];pill.lastElementChild.textContent=m[0];$("headline").textContent=a.headline;$("detail").textContent=a.detail;$("outdoor").textContent=a.outdoor;
 const ai=$("aqi-in"),ao=$("aqi-out"),o=now.outdoor;ai.style.setProperty("--c",aqiColor(now.indoor_aqi>=0?now.indoor_aqi:null));ai.children[1].textContent=now.indoor_aqi>=0?now.indoor_aqi:"--";
 ao.style.setProperty("--c",aqiColor(o.ok?o.aqi:null));ao.children[1].textContent=o.ok?o.aqi:"--";ao.children[2].textContent=o.ok?o.category:"no reading";
-tiles();$("outside").innerHTML=o.ok?`<div class="outbig"><b style="color:${aqiColor(o.aqi)}">${o.aqi}</b><div><div class="cat">${o.category}</div><div class="muted">PM2.5 ${f(o.pm25,1)} µg/m³ · ${o.source||"outdoor sensor"}</div><div class="muted" style="font-size:13px">updated ${o.age}</div></div></div>`:'<span class="muted">No outdoor reading yet. Add a PurpleAir or AirNow key in Settings.</span>';
-const d=now.device;$("device").innerHTML=kv([["Wi-Fi",bars(d.rssi)+d.ssid+` <span class="muted">${d.rssi} dBm</span>`],["Address",d.ip+(d.static_ip?' <span class="muted">static</span>':"")],["Access point",d.bssid+` <span class="muted">ch ${d.channel}</span>`],["Up for",d.uptime+(d.reset?` <span class="muted">since ${d.reset}</span>`:"")],["SEN66",d.sen66],["SFA40",d.sfa40],["Screen",d.page+" page"],["Free memory",d.heap],["Clock",now.time_valid?"synced":"not set"],["Home Assistant",d.mqtt||"off"]]);$("ver").innerHTML="firmware "+d.version+" · built "+d.build+(d.pending?' · <span class="watch">not confirmed yet</span>':"");chart()}
+tiles();$("outside").innerHTML=o.ok?`<div class="outbig"><b style="color:${aqiColor(o.aqi)}">${o.aqi}</b><div><div class="cat">${esc(o.category)}</div><div class="muted">${o.pm25!=null?`PM2.5 ${f(o.pm25,1)} µg/m³ · `:""}${esc(o.source||"outdoor sensor")}</div><div class="muted" style="font-size:13px">updated ${esc(o.age)}</div></div></div>`:'<span class="muted">No outdoor reading yet. Add a PurpleAir or AirNow key in Settings.</span>';
+const d=now.device;$("device").innerHTML=kv([["Wi-Fi",bars(d.rssi)+esc(d.ssid)+` <span class="muted">${d.rssi} dBm</span>`],["Address",esc(d.ip)+(d.static_ip?' <span class="muted">static</span>':"")],["Access point",esc(d.bssid)+` <span class="muted">ch ${d.channel}</span>`],["Up for",esc(d.uptime)+(d.reset?` <span class="muted">since ${esc(d.reset)}</span>`:"")],["SEN66",esc(d.sen66)],["SFA40",esc(d.sfa40)],["Screen",esc(d.page)+" page"],["Free memory",esc(d.heap)],["Clock",now.time_valid?"synced":"not set"],["Home Assistant",esc(d.mqtt||"off")]]);$("ver").innerHTML="firmware "+esc(d.version)+" · built "+esc(d.build)+(d.pending?' · <span class="watch">not confirmed yet</span>':"");chart()}
 async function load(){try{const r=await fetch("/api/now",{cache:"no-store"});if(r.status==401){location="/login";return}now=await r.json();
 if(!hist||now.history_version!=hist.version){hist=await(await fetch("/api/history",{cache:"no-store"})).json()}fetched=Date.now();render()}catch(e){$("stamp").textContent="Not reachable, retrying…"}}
 async function act(a){await fetch("/api/"+a,{method:"POST"});setTimeout(load,a=="restart"?15000:1500)}
@@ -177,20 +178,20 @@ input[type=file]{padding:8px}
 <div><label>Gateway (router)</label><input name="gw" inputmode="decimal" value="%GW%" placeholder="192.168.1.1"></div><div><label>DNS server</label><input name="dns" inputmode="decimal" value="%DNS%" placeholder="same as gateway"></div></div>
 <p class="hint">Reserve the address in your router too, so DHCP never hands it to something else. With DHCP, http://paperair.local/ finds the PaperDIY whatever its address.</p></div></div>
 <h2>Outdoor air</h2><div class="card">
-<label>PurpleAir read key</label><div class="pw"><input type="password" name="pa_key" value="%PA_KEY%"><button type="button" onclick="tog(this)">Show</button></div>
+<label>PurpleAir read key</label><div class="pw"><input type="password" name="pa_key" placeholder="%PA_PH%" autocomplete="new-password"><button type="button" onclick="tog(this)">Show</button></div>
 <div class="row"><div><label>Sensor index</label><input name="pa_idx" inputmode="numeric" value="%PA_IDX%"></div><div><label>Backup sensor (0 = none)</label><input name="pa_bak" inputmode="numeric" value="%PA_BAK%"></div></div>
 <p class="hint">Free key at develop.purpleair.com. The index is the number after “select=” in a sensor's address on map.purpleair.com.</p>
-<label>AirNow key</label><div class="pw"><input type="password" name="an_key" value="%AN_KEY%"><button type="button" onclick="tog(this)">Show</button></div>
+<label>AirNow key</label><div class="pw"><input type="password" name="an_key" placeholder="%AN_PH%" autocomplete="new-password"><button type="button" onclick="tog(this)">Show</button></div>
 <label>ZIP code</label><input name="an_zip" inputmode="numeric" value="%AN_ZIP%">
-<p class="hint">AirNow (docs.airnowapi.org) is the fallback when PurpleAir has nothing recent. Leave both keys empty to show indoor air only.</p></div>
-<h2>Display</h2><div class="card">
+<p class="hint">AirNow (docs.airnowapi.org) is the fallback when PurpleAir has nothing recent. Leave a key empty to keep the stored one; enter a single space to remove it.</p></div>
+<h2>Display &amp; units</h2><div class="card">
 <div class="row"><div><label>Temperature</label><div class="seg"><label><input type="radio" name="units" value="f" %F_SEL%><span>°F</span></label><label><input type="radio" name="units" value="c" %C_SEL%><span>°C</span></label></div></div>
 <div><label>Clock</label><div class="seg"><label><input type="radio" name="clock" value="12" %H12_SEL%><span>12-hour</span></label><label><input type="radio" name="clock" value="24" %H24_SEL%><span>24-hour</span></label></div></div></div>
 <label class="chk" style="display:flex;align-items:center;gap:10px;color:var(--ink);font-size:15px;font-weight:400;margin:16px 0 4px"><input type="checkbox" name="co2_al" value="1" %CO2_SEL% style="width:18px;height:18px;margin:0">CO₂ alerts: tell me to open a window when CO₂ builds up</label>
 <label class="chk" style="display:flex;align-items:center;gap:10px;color:var(--ink);font-size:15px;font-weight:400;margin:8px 0 4px"><input type="checkbox" name="voc_al" value="1" %VOC_SEL% style="width:18px;height:18px;margin:0">VOC alerts: tell me to air out the room when the VOC index is high</label>
-<p class="hint">Off: the reading is still shown and charted, but never changes the advice.</p>
-<label>Temperature offset (°C, usually negative)</label><input name="t_off" inputmode="decimal" value="%T_OFF%">
-<p class="hint">The board warms the sensor a little. Compare with a thermometer after an hour and enter the difference.</p>
+<p class="hint">Off: the reading is still shown and charted, without a limit line or changing the advice.</p>
+<label>Temperature offset (°C, e.g. -2.0 if it reads 2° warm)</label><input name="t_off" inputmode="decimal" value="%T_OFF%">
+<p class="hint">The board warms the sensor a little. Compare with a thermometer after an hour and enter the adjustment; humidity is corrected to match. Temperature and humidity appear on the web page, in the CSV and in Home Assistant.</p>
 <label>Time zone</label><select id="tzsel"><option value="EST5EDT,M3.2.0,M11.1.0">Eastern (US)</option><option value="CST6CDT,M3.2.0,M11.1.0">Central (US)</option><option value="MST7MDT,M3.2.0,M11.1.0">Mountain (US)</option><option value="MST7">Arizona</option><option value="PST8PDT,M3.2.0,M11.1.0">Pacific (US)</option><option value="AKST9AKDT,M3.2.0,M11.1.0">Alaska</option><option value="HST10">Hawaii</option><option value="GMT0BST,M3.5.0/1,M10.5.0">UK</option><option value="CET-1CEST,M3.5.0,M10.5.0/3">Central Europe</option><option value="IST-2IDT,M3.4.4/26,M10.5.0">Israel</option><option value="AEST-10AEDT,M10.1.0,M4.1.0/3">Sydney</option><option value="">Other (POSIX string below)</option></select>
 <input name="tz" id="tz" value="%TZ%" style="margin-top:8px" placeholder="POSIX TZ string"></div>
 <h2>Main screen plots</h2><div class="card">
@@ -228,8 +229,9 @@ x.onload=()=>{if(x.status==200){pb.style.width="100%";pt.textContent="Installed.
 x.onerror=()=>{pt.textContent="Failed: not reachable";b.disabled=false};x.open("POST","/update");x.send(fd)}
 function tog(b){const i=b.parentNode.querySelector("input");i.type=i.type=="password"?"text":"password";b.textContent=i.type=="password"?"Show":"Hide"}
 const tzs=document.getElementById("tzsel"),tz=document.getElementById("tz");function syncTz(){tzs.value=[...tzs.options].some(o=>o.value==tz.value&&o.value)?tz.value:""}syncTz();tzs.onchange=()=>{if(tzs.value)tz.value=tzs.value};tz.oninput=syncTz;
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 document.getElementById("scan").onclick=async function(){this.textContent="Scanning…";this.disabled=true;try{const r=await(await fetch("/api/scan")).json();r.sort((a,b)=>b.rssi-a.rssi);
-document.getElementById("nets").innerHTML=r.length?r.map(n=>`<button type="button" class="net" data-s="${n.ssid.replace(/"/g,"&quot;")}"><span>${n.ssid.replace(/</g,"&lt;")} ${n.secure?"🔒":""}</span><small>${n.rssi} dBm</small></button>`).join(""):'<span class="hint">No networks found. Try again.</span>';
+document.getElementById("nets").innerHTML=r.length?r.map(n=>`<button type="button" class="net" data-s="${esc(n.ssid)}"><span>${esc(n.ssid)} ${n.secure?"🔒":""}</span><small>${n.rssi} dBm</small></button>`).join(""):'<span class="hint">No networks found. Try again.</span>';
 for(const b of document.querySelectorAll(".net"))b.onclick=()=>{document.querySelector("[name=ssid]").value=b.dataset.s;document.querySelector("[name=pass]").focus()}}catch(e){alert("Scan failed: "+e)}this.textContent="Scan";this.disabled=false};
 if(document.querySelector(".notice")&&!document.querySelector("[name=ssid]").value)document.getElementById("scan").click();
 </script></main></body></html>)HTML";

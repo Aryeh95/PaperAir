@@ -6,6 +6,7 @@
 #include <DNSServer.h>
 #include <LittleFS.h>
 #include <esp_heap_caps.h>
+#include <esp_task_wdt.h>
 
 #include <algorithm>
 #include <vector>
@@ -33,6 +34,8 @@
 
 using air::Metric;
 
+SET_LOOP_TASK_STACK_SIZE(16 * 1024);
+
 namespace {
 
 M5Canvas canvas(&M5.Display);
@@ -49,8 +52,10 @@ air::Readings latest;
 bool sensor_seen = false;
 unsigned long sensor_ms = 0;      // last good SEN66 reading
 unsigned long sensor_try_ms = 0;  // last attempt to start the SEN66
+bool sfa40_seen = false;
 float hcho = NAN;
 unsigned long hcho_ms = 0;
+unsigned long sfa40_try_ms = 0;
 
 air::Outdoor outdoor;
 unsigned long outdoor_ms = 0;      // last good outdoor reading
@@ -118,29 +123,35 @@ int strongest_ap(int n) {
 
 void begin_wifi_at(int i) {
   Serial.printf("Wi-Fi: joining %s via %s (channel %d, %d dBm)\n", settings.ssid.c_str(), WiFi.BSSIDstr(i).c_str(),
-                WiFi.channel(i), WiFi.RSSI(i));
+                (int) WiFi.channel(i), (int) WiFi.RSSI(i));
   uint8_t bssid[6];
   memcpy(bssid, WiFi.BSSID(i), 6);
   WiFi.begin(settings.ssid.c_str(), settings.wifi_password.c_str(), WiFi.channel(i), bssid);
 }
 
 // Join the saved network, with the static address from the settings or DHCP
+bool join_scanning = false;
+
 void join_wifi() {
-  IPAddress ip, gw, mask, dns;
+  IPAddress ip, gw, mask, dns_ip;
   if (settings.have_static_ip() && ip.fromString(settings.static_ip)) {
     if (!mask.fromString(settings.subnet)) mask = IPAddress(255, 255, 255, 0);
     if (!gw.fromString(settings.gateway)) gw = IPAddress(ip[0], ip[1], ip[2], 1);
-    if (!dns.fromString(settings.dns)) dns = gw;
-    WiFi.config(ip, gw, mask, dns);
+    if (!dns_ip.fromString(settings.dns)) dns_ip = gw;
+    WiFi.config(ip, gw, mask, dns_ip);
   } else {
     WiFi.config(IPAddress(), IPAddress(), IPAddress());   // back to DHCP
   }
-  int best = -1;
-  if (settings.roam) best = strongest_ap(WiFi.scanNetworks(false, false, false, 300, 0, settings.ssid.c_str()));
-  if (best >= 0) begin_wifi_at(best);
-  else WiFi.begin(settings.ssid.c_str(), settings.wifi_password.c_str());
-  WiFi.scanDelete();
   wifi_begin_ms = millis();
+  if (settings.roam) {
+    const int rc = WiFi.scanNetworks(true, false, false, 200, 0, settings.ssid.c_str());
+    if (rc == WIFI_SCAN_RUNNING || rc >= 0) {
+      join_scanning = true;
+      return;
+    }
+  }
+  join_scanning = false;
+  WiFi.begin(settings.ssid.c_str(), settings.wifi_password.c_str());
 }
 
 // Every 5 minutes while the signal is weak, look for a stronger access point and move to it
@@ -160,7 +171,7 @@ void keep_roaming() {
   scanning = false;
   const int best = n > 0 ? strongest_ap(n) : -1;
   if (best >= 0 && memcmp(WiFi.BSSID(best), WiFi.BSSID(), 6) != 0 && WiFi.RSSI(best) >= WiFi.RSSI() + 8) {
-    Serial.printf("Wi-Fi: %d dBm here, moving to a stronger access point\n", WiFi.RSSI());
+    Serial.printf("Wi-Fi: %d dBm here, moving to a stronger access point\n", (int) WiFi.RSSI());
     WiFi.disconnect();
     begin_wifi_at(best);
     wifi_begin_ms = millis();
@@ -186,11 +197,20 @@ void read_sensors() {
   if (!elapsed(read_ms, 1000)) return;
   read_ms = millis();
 
+  const unsigned long last_sen = sensor_seen ? sensor_ms : sensor_try_ms;
+  if (sen66.started() && elapsed(last_sen, 15000) && elapsed(sensor_try_ms, 15000)) {
+    sen66.reset();  // stopped answering (e.g. a brief power dip reset it to idle): start it again
+  }
   if (!sen66.started() && (sensor_try_ms == 0 || elapsed(sensor_try_ms, 10000))) {
     sensor_try_ms = millis();
     Serial.println(sen66.begin() ? "SEN66 started" : "No SEN66 found");
   }
-  if (sfa40.found()) {
+  if (sfa40_seen) {
+    if (sfa40.found() && elapsed(hcho_ms, 15000) && elapsed(sfa40_try_ms, 15000)) sfa40.reset();
+    if (!sfa40.found() && elapsed(sfa40_try_ms, 10000)) {
+      sfa40_try_ms = millis();
+      if (sfa40.begin()) Serial.println("SFA40 restarted");
+    }
     air::Sfa40Values f;
     if (sfa40.read(f)) {
       hcho = f.hcho;  // NAN for the first 10 minutes while it warms up
@@ -210,7 +230,7 @@ void read_sensors() {
   r[Metric::PM10] = s.pm10;
   r[Metric::VOC] = s.voc;
   r[Metric::NOx] = s.nox;
-  r[Metric::Temp] = s.temperature - settings.temperature_offset_c;
+  r[Metric::Temp] = air::compensate_temperature(s.temperature, settings.temperature_offset_c);
   r[Metric::Humidity] = air::compensate_humidity(s.humidity, s.temperature, settings.temperature_offset_c);
   r[Metric::HCHO] = (sfa40.found() && !elapsed(hcho_ms, 30000)) ? hcho : NAN;
   latest = r;
@@ -218,6 +238,17 @@ void read_sensors() {
 }
 
 void keep_connected() {
+  if (join_scanning) {
+    const int n = WiFi.scanComplete();
+    if (n == WIFI_SCAN_RUNNING) return;
+    join_scanning = false;
+    const int best = n > 0 ? strongest_ap(n) : -1;
+    if (best >= 0) begin_wifi_at(best);
+    else WiFi.begin(settings.ssid.c_str(), settings.wifi_password.c_str());
+    WiFi.scanDelete();
+    wifi_begin_ms = millis();
+  }
+
   static bool was_connected = false;
   const bool connected = WiFi.status() == WL_CONNECTED;
   if (connected != was_connected) {
@@ -242,16 +273,20 @@ void keep_connected() {
   if (setup_mode && settings.have_wifi() && elapsed(setup_since, 60UL * 1000UL)) leave_setup();   // joined after all
   keep_roaming();
 
-  // Outdoor air: on connecting, then every 10 minutes (a minute after a failure)
-  const unsigned long wait = (outdoor.ok ? config::kOutdoorUpdateMs : 60UL * 1000UL);
-  if (!outdoor_tried || elapsed(outdoor_try_ms, wait)) {
-    outdoor_tried = true;
+  // Outdoor air: fetched in the background on connecting, then every 10 minutes (a minute after a failure)
+  air::Outdoor fresh;
+  if (outdoor_poll(fresh)) {
     outdoor_try_ms = millis();
-    const air::Outdoor fresh = fetch_outdoor();
     if (fresh.ok) {
       outdoor = fresh;
       outdoor_ms = millis();
     }
+  }
+  const unsigned long wait = (outdoor.ok ? config::kOutdoorUpdateMs : 60UL * 1000UL);
+  if (!outdoor_busy() && (!outdoor_tried || elapsed(outdoor_try_ms, wait))) {
+    outdoor_tried = true;
+    outdoor_try_ms = millis();
+    outdoor_start();
   }
   // Forget it if nothing new has come in for an hour
   if (outdoor.ok && elapsed(outdoor_ms, 60UL * 60UL * 1000UL)) outdoor = air::Outdoor();
@@ -288,20 +323,26 @@ bool write_history(const uint8_t *buf, size_t n) {
   return ok && LittleFS.rename("/history.tmp", kHistoryFile);
 }
 
-void keep_history() {
+void save_history_now(time_t t) {
+  static uint8_t buf[air::History::kSaveSize];
+  const size_t n = history.save(buf, sizeof buf, (uint32_t) t);
+  if (n && !write_history(buf, n)) Serial.println("History: could not save to flash");
+  history_saved_ms = millis();
+}
+
+void keep_history(bool force = false) {
   const time_t t = time(nullptr);
   if (t < 1700000000) return;
-  static uint8_t buf[air::History::kSaveSize];
   if (!history_restored) {
     history_restored = true;
+    static uint8_t buf[air::History::kSaveSize];
     const size_t n = read_history(buf, sizeof buf);
     if (n && history.restore(buf, n, (uint32_t) t, millis())) Serial.println("History restored from flash");
     else if (n) Serial.println("History in flash was too old (or from another clock) to use");
     history_saved_ms = millis();
-  } else if (elapsed(history_saved_ms, air::History::kBucketMs)) {
-    history_saved_ms = millis();
-    const size_t n = history.save(buf, sizeof buf, (uint32_t) t);
-    if (n && !write_history(buf, n)) Serial.println("History: could not save to flash");
+    if (force) save_history_now(t);
+  } else if (force || elapsed(history_saved_ms, air::History::kBucketMs)) {
+    save_history_now(t);
   }
 }
 
@@ -322,7 +363,7 @@ ui::ScreenData screen_data() {
   d.fit_scale = settings.plot_fit;
   const float pm25 = d.now[Metric::PM25];
   d.indoor_aqi = std::isnan(pm25) ? -1 : air::aqi_from_pm25(pm25);
-  d.hcho_fitted = sfa40.found();
+  d.hcho_fitted = sfa40_seen;
   d.fahrenheit = settings.fahrenheit;
   d.clock_24h = settings.clock_24h;
   d.wifi_ok = WiFi.status() == WL_CONNECTED;
@@ -397,6 +438,7 @@ void push_changed() {
     return;
   }
   for (const auto &r : done) {
+    while (M5.Display.displayBusy()) delay(1);
     M5.Display.setClipRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
     canvas.pushSprite(0, 0);
     M5.Display.clearClipRect();
@@ -479,9 +521,23 @@ void log_readings() {
                 r[Metric::Humidity], outdoor.ok ? outdoor.aqi : -1);
 }
 
+String ago_text(unsigned long ms) {
+  const unsigned long s = ms / 1000;
+  char buf[32];
+  if (s < 60) snprintf(buf, sizeof buf, "%lu s ago", s);
+  else if (s < 3600) snprintf(buf, sizeof buf, "%lu min ago", s / 60);
+  else snprintf(buf, sizeof buf, "%lu h %lu min ago", s / 3600, (s % 3600) / 60);
+  return buf;
+}
+
 }  // namespace
 
 void setup() {
+  // If new firmware hangs, restart after 60 s so the bootloader can roll back to the previous slot
+  const esp_task_wdt_config_t wdt = {60000, 0, true};
+  if (esp_task_wdt_reconfigure(&wdt) == ESP_ERR_INVALID_STATE) esp_task_wdt_init(&wdt);
+  esp_task_wdt_add(nullptr);
+
   auto cfg = M5.config();
   cfg.clear_display = false;  // the first screen does a full refresh anyway
   M5.begin(cfg);
@@ -494,7 +550,9 @@ void setup() {
   // The data partition; formatted the first time (a few seconds, once)
   history_fs = LittleFS.begin(true, "/littlefs", 4, "spiffs");
   if (!history_fs) Serial.println("History: no file system, it won't survive a restart");
-  Serial.println(sfa40.begin() ? "SFA40 found (formaldehyde readings start after 10 minutes)" : "No SFA40");
+  sfa40_seen = sfa40.begin();
+  if (sfa40_seen) hcho_ms = sfa40_try_ms = millis();
+  Serial.println(sfa40_seen ? "SFA40 found (formaldehyde readings start after 10 minutes)" : "No SFA40");
 
   settings_load();
   WiFi.mode(WIFI_STA);
@@ -512,20 +570,30 @@ void setup() {
     page_ms = millis();
     redraw_now = true;
   };
-  hooks.sen66_started = [] { return sen66.started(); };
-  hooks.sensor_age_ms = [] { return millis() - sensor_ms; };
+  hooks.sen66_status = []() -> String {
+    if (sensor_seen) return (elapsed(sensor_ms, 30000) ? "stopped, " : "reading, ") + ago_text(millis() - sensor_ms);
+    return sen66.started() ? "warming up" : "not found";
+  };
   hooks.outdoor_age_ms = [] { return millis() - outdoor_ms; };
   hooks.in_setup = [] { return setup_mode; };
   hooks.enter_setup = [] { enter_setup(); };
-  hooks.settings_changed = [](bool wifi_changed) {
+  hooks.before_restart = [] { keep_history(true); };
+  hooks.settings_changed = [](bool wifi_changed, bool outdoor_changed) {
     settings_save();
     configTzTime(settings.time_zone.c_str(), "pool.ntp.org", "time.google.com");
     if (wifi_changed) {
-      // Join the new network; the setup hotspot stays up a minute in case it fails
-      WiFi.mode(WIFI_AP_STA);
+      if (setup_mode) {
+        // Join the new network; the setup hotspot stays up a minute in case it fails
+        WiFi.mode(WIFI_AP_STA);
+        setup_since = millis();
+      } else {
+        WiFi.disconnect(false);
+      }
+      wifi_lost_ms = millis();
       join_wifi();
-      setup_since = millis();
     }
+    if (outdoor_changed) outdoor_tried = false;
+    ota_set_password(settings.web_password);
     mqtt_reconfigure();
     redraw_now = true;
   };
@@ -535,10 +603,12 @@ void setup() {
   mq.data = screen_data;
   mq.refresh = hooks.refresh;
   mq.toggle_page = hooks.toggle_page;
+  mq.before_restart = hooks.before_restart;
   mqtt_begin(mq);
 }
 
 void loop() {
+  esp_task_wdt_reset();
   check_buttons();
   read_sensors();
   keep_connected();

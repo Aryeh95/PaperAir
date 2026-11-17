@@ -28,12 +28,12 @@ struct WebHooks {
   std::function<ui::ScreenData()> data;   // what the screen shows now
   std::function<void()> refresh;          // full refresh of the screen
   std::function<void()> toggle_page;
-  std::function<bool()> sen66_started;
-  std::function<unsigned long()> sensor_age_ms;   // since the last good SEN66 reading
+  std::function<String()> sen66_status;
   std::function<unsigned long()> outdoor_age_ms;  // since the last good outdoor reading
   std::function<bool()> in_setup;                 // the setup hotspot is up
-  std::function<void(bool wifi_changed)> settings_changed;   // after the settings page saves
+  std::function<void(bool wifi_changed, bool outdoor_changed)> settings_changed;  // after the settings page saves
   std::function<void()> enter_setup;              // open the setup hotspot
+  std::function<void()> before_restart;           // save history before rebooting
 };
 
 void web_begin(const WebHooks &hooks);

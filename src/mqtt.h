@@ -18,6 +18,7 @@ struct MqttHooks {
   std::function<ui::ScreenData()> data;   // what the screen shows now
   std::function<void()> refresh;          // full refresh of the screen
   std::function<void()> toggle_page;
+  std::function<void()> before_restart;
 };
 
 void mqtt_begin(const MqttHooks &hooks);

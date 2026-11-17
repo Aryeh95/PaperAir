@@ -1,7 +1,9 @@
 #pragma once
 // Outdoor air over Wi-Fi: PurpleAir first (the main sensor, then the backup), AirNow if neither
-// has a recent reading.
+// has a recent reading. Fetched in a background task so slow or unreachable servers never stall
+// buttons, sensor reads or the web page.
 #include "advice.h"
 
-// Asks the services in turn and returns the first good answer (ok = false if none answered)
-air::Outdoor fetch_outdoor();
+void outdoor_start();                  // starts a background fetch if none is running
+bool outdoor_busy();
+bool outdoor_poll(air::Outdoor &out);  // true once when a fetch finishes

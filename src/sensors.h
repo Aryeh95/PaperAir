@@ -28,6 +28,7 @@ class Sen66 {
   bool begin();                       // false if there's no SEN66
   bool read(air::Sen66Values &out);   // true when a new reading came in (once a second)
   bool started() const { return started_; }
+  void reset() { started_ = false; }
 
  private:
   SensirionDevice dev_;
@@ -40,6 +41,7 @@ class Sfa40 {
   bool begin();                       // false if there's no SFA40
   bool read(air::Sfa40Values &out);
   bool found() const { return found_; }
+  void reset() { found_ = false; }
 
  private:
   SensirionDevice dev_;

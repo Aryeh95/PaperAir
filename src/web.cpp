@@ -7,6 +7,7 @@
 #include <WiFi.h>
 #include <esp_random.h>
 #include <esp_system.h>
+#include <esp_task_wdt.h>
 
 #include <cmath>
 #include <cstring>
@@ -52,6 +53,7 @@ bool signed_in() {
 
 bool require_login(bool page) {
   if (signed_in()) return true;
+  if (server.hasHeader("Authorization")) delay(500);  // slow down Bearer guessing too
   if (page) {
     server.sendHeader("Location", "/login");
     server.send(302, "text/plain", "");
@@ -65,7 +67,7 @@ bool require_login(bool page) {
 bool in_setup() { return hooks.in_setup && hooks.in_setup(); }
 
 bool on_hotspot() {
-  return in_setup() && server.hostHeader() != WiFi.localIP().toString() && !server.hostHeader().startsWith("paperair.local");
+  return in_setup() && server.client().localIP() == WiFi.softAPIP();
 }
 
 bool settings_allowed() { return on_hotspot() || require_login(true); }
@@ -136,7 +138,7 @@ void handle_now() {
     o["category"] = air::aqi_word(d.outdoor.aqi);
     set_number(o, "pm25", d.outdoor.pm25, 1);
     o["age"] = ago(hooks.outdoor_age_ms());
-    o["source"] = settings.purpleair_key.length() ? "PurpleAir" : "AirNow";
+    o["source"] = d.outdoor.source.empty() ? (settings.purpleair_key.length() ? "PurpleAir" : "AirNow") : d.outdoor.source.c_str();
   }
   JsonObject lim = doc["limits"].to<JsonObject>();
   using namespace air::limits;
@@ -191,7 +193,7 @@ void handle_now() {
   dev["mqtt"] = mqtt_status();
   dev["build"] = kBuild;
   dev["pending"] = ota_pending();
-  dev["sen66"] = hooks.sen66_started() ? "reading, " + ago(hooks.sensor_age_ms()) : "not found";
+  dev["sen66"] = hooks.sen66_status ? hooks.sen66_status() : String("unknown");
   dev["sfa40"] = d.hcho_fitted ? "found" : "not fitted";
   dev["page"] = d.page == ui::Page::Main ? "main" : "trends";
   String out;
@@ -301,10 +303,10 @@ void handle_settings_page() {
   page.replace("%MASK%", html_escape(settings.subnet));
   page.replace("%GW%", html_escape(settings.gateway));
   page.replace("%DNS%", html_escape(settings.dns));
-  page.replace("%PA_KEY%", html_escape(settings.purpleair_key));
+  page.replace("%PA_PH%", settings.purpleair_key.length() ? "(unchanged)" : "");
   page.replace("%PA_IDX%", String(settings.purpleair_index));
   page.replace("%PA_BAK%", String(settings.purpleair_backup));
-  page.replace("%AN_KEY%", html_escape(settings.airnow_key));
+  page.replace("%AN_PH%", settings.airnow_key.length() ? "(unchanged)" : "");
   page.replace("%AN_ZIP%", html_escape(settings.airnow_zip));
   page.replace("%F_SEL%", settings.fahrenheit ? "checked" : "");
   page.replace("%C_SEL%", settings.fahrenheit ? "" : "checked");
@@ -332,11 +334,12 @@ void handle_settings_page() {
   page.replace("%ROLLBACK%", ota_can_roll_back() ? "<button type=\"button\" class=\"btn\" onclick=\"if(confirm('Restart into the previous firmware?'))fetch('/api/rollback',{method:'POST'}).then(()=>alert('Restarting into the previous firmware. Reload in 20 seconds.'))\">Boot the previous firmware</button>" : "");
   server.sendHeader("Cache-Control", "no-store");
   server.send(200, "text/html", page);
+  if (!hotspot) ota_web_served();
 }
 
 void handle_settings_post() {
   if (!settings_allowed()) return;
-  bool wifi_changed = false;
+  bool wifi_changed = false, outdoor_changed = false;
   String ssid = server.arg("ssid");
   ssid.trim();
   if (ssid != settings.ssid) {
@@ -362,14 +365,35 @@ void handle_settings_post() {
     settings.dns = dns;
   }
   settings.roam = server.arg("roam") == "1";
-  settings.purpleair_key = server.arg("pa_key");
-  settings.purpleair_key.trim();
-  settings.purpleair_index = server.arg("pa_idx").toInt();
-  settings.purpleair_backup = server.arg("pa_bak").toInt();
-  settings.airnow_key = server.arg("an_key");
-  settings.airnow_key.trim();
-  settings.airnow_zip = server.arg("an_zip");
-  settings.airnow_zip.trim();
+  {
+    const String pk = server.arg("pa_key");
+    String pa_key = settings.purpleair_key;
+    if (pk == " ") pa_key = "";
+    else if (pk.length()) {
+      pa_key = pk;
+      pa_key.trim();
+    }
+    const int pa_idx = server.arg("pa_idx").toInt();
+    const int pa_bak = server.arg("pa_bak").toInt();
+    const String ak = server.arg("an_key");
+    String an_key = settings.airnow_key;
+    if (ak == " ") an_key = "";
+    else if (ak.length()) {
+      an_key = ak;
+      an_key.trim();
+    }
+    String an_zip = server.arg("an_zip");
+    an_zip.trim();
+    if (pa_key != settings.purpleair_key || pa_idx != settings.purpleair_index || pa_bak != settings.purpleair_backup ||
+        an_key != settings.airnow_key || an_zip != settings.airnow_zip) {
+      outdoor_changed = true;
+    }
+    settings.purpleair_key = pa_key;
+    settings.purpleair_index = pa_idx;
+    settings.purpleair_backup = pa_bak;
+    settings.airnow_key = an_key;
+    settings.airnow_zip = an_zip;
+  }
   settings.fahrenheit = server.arg("units") != "c";
   settings.clock_24h = server.arg("clock") == "24";
   settings.voc_alerts = server.arg("voc_al") == "1";
@@ -410,7 +434,7 @@ void handle_settings_post() {
     settings.web_password = pw;
     session = "";  // sign everyone out
   }
-  if (hooks.settings_changed) hooks.settings_changed(wifi_changed && settings.have_wifi());
+  if (hooks.settings_changed) hooks.settings_changed(wifi_changed && settings.have_wifi(), outdoor_changed);
 
   String page = FPSTR(kSavedPage);
   const bool hotspot = on_hotspot();
@@ -431,6 +455,9 @@ void handle_settings_post() {
 void handle_scan() {
   if (!settings_allowed()) return;
   if (!(WiFi.getMode() & WIFI_MODE_STA)) WiFi.mode(WIFI_AP_STA);
+  const unsigned long t0 = millis();
+  while (WiFi.scanComplete() == WIFI_SCAN_RUNNING && millis() - t0 < 4000) delay(20);
+  WiFi.scanDelete();
   const int n = WiFi.scanNetworks();
   JsonDocument doc;
   JsonArray arr = doc.to<JsonArray>();
@@ -458,8 +485,8 @@ void handle_scan() {
 
 void web_begin(const WebHooks &h) {
   hooks = h;
-  const char *headers[] = {"Cookie", "Authorization", "Host"};
-  server.collectHeaders(headers, 3);
+  const char *headers[] = {"Cookie", "Authorization"};
+  server.collectHeaders(headers, 2);
   server.on("/", HTTP_GET, [] {
     if (on_hotspot()) {   // a phone on the setup hotspot wants the settings page
       server.sendHeader("Location", "/settings");
@@ -521,6 +548,7 @@ void web_begin(const WebHooks &h) {
           return;
         }
         server.send(200, "application/json", "{\"ok\":true}");
+        if (hooks.before_restart) hooks.before_restart();
         delay(300);
         ESP.restart();
       },
@@ -532,6 +560,7 @@ void web_begin(const WebHooks &h) {
           Serial.printf("Update: receiving %s\n", up.filename.c_str());
           if (!Update.begin(UPDATE_SIZE_UNKNOWN)) Update.printError(Serial);
         } else if (up.status == UPLOAD_FILE_WRITE) {
+          esp_task_wdt_reset();
           if (upload_ok && !Update.hasError()) Update.write(up.buf, up.currentSize);
         } else if (up.status == UPLOAD_FILE_END) {
           if (upload_ok && Update.end(true)) Serial.printf("Update: %u bytes written, restarting\n", up.totalSize);
@@ -543,11 +572,12 @@ void web_begin(const WebHooks &h) {
   server.on("/api/restart", HTTP_POST, [] {
     if (!require_login(false)) return;
     server.send(200, "application/json", "{\"ok\":true}");
+    if (hooks.before_restart) hooks.before_restart();
     delay(200);
     ESP.restart();
   });
   server.onNotFound([] {
-    if (in_setup()) {   // captive portal: every address a phone probes leads to the settings page
+    if (on_hotspot()) {  // captive portal: every address a phone probes on the hotspot leads to the settings page
       server.sendHeader("Location", "http://" + WiFi.softAPIP().toString() + "/settings");
       server.send(302, "text/plain", "");
       return;
@@ -560,13 +590,15 @@ void web_begin(const WebHooks &h) {
 
 void web_loop() {
   static bool mdns = false;
-  if (!mdns && WiFi.status() == WL_CONNECTED) {
-    mdns = MDNS.begin("paperair");
-    if (mdns) {
-      MDNS.addService("http", "tcp", 80);
-      Serial.println("Web: http://paperair.local/");
+  if (WiFi.status() == WL_CONNECTED) {
+    if (!mdns) {
+      mdns = MDNS.begin("paperair");
+      if (mdns) {
+        MDNS.addService("http", "tcp", 80);
+        Serial.println("Web: http://paperair.local/");
+      }
     }
-    ota_begin(settings.web_password);
+    if (mdns) ota_begin(settings.web_password, hooks.before_restart);
   }
   server.handleClient();
 }

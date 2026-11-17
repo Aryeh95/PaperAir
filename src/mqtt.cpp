@@ -21,6 +21,7 @@ std::atomic<bool> connected{false};
 std::atomic<bool> need_announce{false};  // send the discovery configs (after connecting, or Home Assistant restarting)
 std::atomic<int> pending_cmd{0};         // 1 refresh, 2 page, 3 restart; run in loop(), not in the MQTT task
 unsigned long state_ms = 0;
+unsigned long start_try_ms = 0;
 bool announced_hcho = false;
 
 constexpr const char *kDiscovery = "homeassistant";
@@ -76,13 +77,29 @@ void stop() {
 }
 
 void start() {
-  static String uri, client_id, user, pass;   // the client keeps pointers to these
-  uri = "mqtt://" + settings.mqtt_host + ":" + String(settings.mqtt_port);
+  static String host, client_id, user, pass;  // the client keeps pointers to these
+  start_try_ms = millis();
+  host = settings.mqtt_host;
+  if (host.startsWith("mqtt://")) host = host.substring(7);
+  else if (host.startsWith("tcp://")) host = host.substring(6);
+  int slash = host.indexOf('/');
+  if (slash >= 0) host = host.substring(0, slash);
+  int port = settings.mqtt_port;
+  int colon = host.indexOf(':');
+  if (colon > 0) {
+    const int p = host.substring(colon + 1).toInt();
+    if (p > 0 && p < 65536) port = p;
+    host = host.substring(0, colon);
+  }
+  host.trim();
+  if (!host.length()) return;
   client_id = uid;
   user = settings.mqtt_user;
   pass = settings.mqtt_password;
   esp_mqtt_client_config_t cfg = {};
-  cfg.broker.address.uri = uri.c_str();
+  cfg.broker.address.hostname = host.c_str();
+  cfg.broker.address.port = port;
+  cfg.broker.address.transport = MQTT_TRANSPORT_OVER_TCP;
   cfg.credentials.client_id = client_id.c_str();
   if (user.length()) cfg.credentials.username = user.c_str();
   if (pass.length()) cfg.credentials.authentication.password = pass.c_str();
@@ -103,7 +120,7 @@ void start() {
   esp_mqtt_client_start(client);
   running_key = broker_key();
   running_fahrenheit = settings.fahrenheit;
-  Serial.printf("MQTT: connecting to %s\n", uri.c_str());
+  Serial.printf("MQTT: connecting to %s:%d\n", host.c_str(), port);
 }
 
 void publish(const String &topic, const String &payload, bool retain) {
@@ -237,6 +254,7 @@ void mqtt_begin(const MqttHooks &h) {
 }
 
 void mqtt_reconfigure() {
+  start_try_ms = 0;
   if (client && (broker_key() != running_key || !enabled())) stop();   // started again by mqtt_loop()
   else if (client && settings.fahrenheit != running_fahrenheit) {
     running_fahrenheit = settings.fahrenheit;
@@ -247,7 +265,7 @@ void mqtt_reconfigure() {
 void mqtt_loop() {
   if (!enabled()) return;
   if (!client) {
-    if (WiFi.status() == WL_CONNECTED) start();
+    if (WiFi.status() == WL_CONNECTED && (start_try_ms == 0 || millis() - start_try_ms >= 10000UL)) start();
     return;
   }
   switch (pending_cmd.exchange(0)) {
@@ -255,6 +273,7 @@ void mqtt_loop() {
     case 2: hooks.toggle_page(); break;
     case 3:
       Serial.println("MQTT: restart requested");
+      if (hooks.before_restart) hooks.before_restart();
       publish(avail_topic, "offline", true);
       delay(300);
       ESP.restart();
